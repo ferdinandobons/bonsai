@@ -48,3 +48,37 @@ teardown() { teardown_sandbox; }
   bonsai_ensure_dir "$CLAUDE_PLUGIN_DATA/a/b/c"
   [ -d "$CLAUDE_PLUGIN_DATA/a/b/c" ]
 }
+
+@test "common: bonsai_slugify normal string lowercases and dashes" {
+  run bonsai_slugify "Race Condition in updateCache"
+  [ "$status" -eq 0 ]
+  [ "$output" = "race-condition-in-updatecache" ]
+}
+
+@test "common: bonsai_slugify truncates at 40 chars" {
+  run bonsai_slugify "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ"
+  [ "$status" -eq 0 ]
+  [ "${#output}" -le 40 ]
+}
+
+@test "common: bonsai_slugify empty input returns 'untitled'" {
+  run bonsai_slugify ""
+  [ "$status" -eq 0 ]
+  [ "$output" = "untitled" ]
+}
+
+@test "common: bonsai_slugify all-special input returns 'untitled'" {
+  run bonsai_slugify "!!!---???"
+  [ "$status" -eq 0 ]
+  [ "$output" = "untitled" ]
+}
+
+@test "common: bonsai_json_write produces atomic file" {
+  bonsai_json_write "$CLAUDE_PLUGIN_DATA/out.json" '{"k":1}'
+  [ -f "$CLAUDE_PLUGIN_DATA/out.json" ]
+  run jq -e '.k == 1' "$CLAUDE_PLUGIN_DATA/out.json"
+  [ "$status" -eq 0 ]
+  # No leftover .tmp.* siblings
+  run bash -c "ls $CLAUDE_PLUGIN_DATA/out.json.tmp.* 2>/dev/null"
+  [ -z "$output" ]
+}

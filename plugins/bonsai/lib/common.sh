@@ -5,7 +5,12 @@
 [[ -n "${_BONSAI_COMMON_SOURCED:-}" ]] && return 0
 _BONSAI_COMMON_SOURCED=1
 
-set -o pipefail
+# NOTE: we deliberately do NOT enable `set -o pipefail` at module scope.
+# Sourcing this file should not change the caller's shell options. Spec §9
+# requires that bonsai never disturbs the session — pipefail in stop.sh could
+# turn SIGPIPE on a downstream tool into a non-zero hook exit, which Claude
+# Code would surface. Apply pipefail locally inside subshells when needed:
+#   ( set -o pipefail; cmd1 | cmd2 )
 
 # Current time in ISO-8601 UTC (e.g. "2026-05-27T21:18:00Z").
 bonsai_now_iso() {
@@ -51,25 +56,38 @@ bonsai_json_get() {
   jq -r "$path // empty" "$file" 2>/dev/null || printf ''
 }
 
-# Write a JSON file atomically (write to .tmp then mv).
+# Write a JSON file atomically (write to a unique tmp then mv).
+# Uses mktemp instead of $$ because $$ does not change across subshells —
+# two concurrent command substitutions would collide and silently lose data.
 bonsai_json_write() {
   local file="$1"
   local content="$2"
   local dir
   dir="$(dirname "$file")"
   bonsai_ensure_dir "$dir" || return 1
-  local tmp="$file.tmp.$$"
-  printf '%s' "$content" > "$tmp" || return 1
+  local tmp
+  tmp="$(mktemp "${file}.tmp.XXXXXX")" || return 1
+  printf '%s' "$content" > "$tmp" || { rm -f "$tmp"; return 1; }
   mv "$tmp" "$file" || { rm -f "$tmp"; return 1; }
   return 0
 }
 
 # Slugify a string for use as filename segment.
 # Lowercase, replace non-alphanumerics with dashes, trim, max 40 chars.
+# Empty / all-special input → "untitled" so callers never produce filenames
+# like "2026-05-27-001-.md".
 bonsai_slugify() {
   local s="$1"
-  printf '%s' "$s" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' \
-    | cut -c1-40
+  local out
+  out="$(
+    printf '%s' "$s" \
+      | tr '[:upper:]' '[:lower:]' \
+      | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' \
+      | cut -c1-40
+  )"
+  if [[ -z "$out" ]]; then
+    printf 'untitled'
+  else
+    printf '%s' "$out"
+  fi
 }

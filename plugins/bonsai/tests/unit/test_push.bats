@@ -65,3 +65,30 @@ teardown() { teardown_sandbox; }
   run bonsai_push_format "$obs"
   [ "$status" -eq 1 ]
 }
+
+@test "push: format handles title with newlines safely" {
+  local obs; obs="$(jq -n --arg t $'Race\ncondition' '{
+    id:"x", lens:"technical", severity:"critical",
+    title:$t, tldr:"x", action_brief:"y"
+  }')"
+  CLAUDE_PROJECT_DIR=/p run bonsai_push_format "$obs"
+  [ "$status" -eq 0 ]
+  # The output must still be valid JSON (no torn body string)
+  echo "$output" | jq -e '.body' >/dev/null
+}
+
+@test "push: hourly cap from config.json overrides default" {
+  # Project config sets a lower cap (2 instead of 5)
+  jq '.push_notifications_per_hour = 2' "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json" \
+    > "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json.tmp" \
+    && mv "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json.tmp" \
+          "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json"
+  local now; now="$(date -u +%s)"
+  local recent=$(( now - 100 ))
+  local events; events="$(jq -n --argjson r "$recent" \
+    --arg p "$CLAUDE_PROJECT_DIR" \
+    '[range(0;2) | {"kind":"push","scope":$p,"epoch":$r}]')"
+  jq -n --argjson e "$events" '{"__version":1,"events":$e}' > "$CLAUDE_PLUGIN_DATA/quota.json"
+  run bonsai_push_rate_ok "$CLAUDE_PROJECT_DIR"
+  [ "$status" -eq 1 ]
+}

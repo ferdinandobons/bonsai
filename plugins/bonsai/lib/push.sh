@@ -9,7 +9,20 @@ source "${BASH_SOURCE[0]%/*}/common.sh"
 # shellcheck disable=SC1091
 source "${BASH_SOURCE[0]%/*}/quota.sh"
 
-_BONSAI_PUSH_HOURLY_CAP=5
+_BONSAI_PUSH_HOURLY_CAP_DEFAULT=5
+
+# Resolve hourly cap from per-project config.json (falls back to default).
+_bonsai_push_hourly_cap() {
+  local project_dir="$1"
+  local cfg="$project_dir/.claude/bonsai/config.json"
+  local cap="$_BONSAI_PUSH_HOURLY_CAP_DEFAULT"
+  if [[ -f "$cfg" ]]; then
+    local v
+    v="$(bonsai_json_get "$cfg" '.push_notifications_per_hour')"
+    [[ "$v" =~ ^[0-9]+$ ]] && cap="$v"
+  fi
+  printf '%s' "$cap"
+}
 
 bonsai_push_format() {
   local obs="$1"
@@ -24,9 +37,10 @@ bonsai_push_format() {
   fi
   local project="${CLAUDE_PROJECT_DIR:-unknown}"
   local proj_name; proj_name="$(basename "$project")"
-  local body="Critical observation: ${title} — open the chip to fix."
-  jq -n --arg t "Bonsai · ${proj_name}" --arg b "$body" \
-    '{title:$t, body:$b}'
+  # Build body inside jq so the title can't break out of the body string
+  # (e.g. newlines, quotes from LLM-generated titles).
+  jq -n --arg t "Bonsai · ${proj_name}" --arg title "$title" \
+    '{title:$t, body:("Critical observation: " + $title + " — open the chip to fix.")}'
 }
 
 # Exit 0 if a push is allowed for this project in the last hour, 1 otherwise.
@@ -43,5 +57,6 @@ bonsai_push_rate_ok() {
     n=0
   fi
   [[ -z "$n" || "$n" == "null" ]] && n=0
-  [[ "$n" -lt "$_BONSAI_PUSH_HOURLY_CAP" ]]
+  local cap; cap="$(_bonsai_push_hourly_cap "$project_dir")"
+  [[ "$n" -lt "$cap" ]]
 }

@@ -68,3 +68,19 @@ teardown() { teardown_sandbox; }
   echo "$output" | grep -q "^/x$"
   echo "$output" | grep -q "^/y$"
 }
+
+@test "whitelist: remove on corrupt file returns 1 and logs an error" {
+  echo "{not valid json" > "$CLAUDE_PLUGIN_DATA/projects.json"
+  run bonsai_whitelist_remove "/foo"
+  [ "$status" -eq 1 ]
+  [ -f "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log" ]
+  grep -q "whitelist_remove: corrupt" "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log"
+}
+
+@test "whitelist: add on corrupt file returns 1 and logs an error" {
+  echo "{not valid json" > "$CLAUDE_PLUGIN_DATA/projects.json"
+  run bonsai_whitelist_add "/foo"
+  [ "$status" -eq 1 ]
+  [ -f "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log" ]
+  grep -q "whitelist_add: corrupt" "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log"
+}

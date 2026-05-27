@@ -62,3 +62,16 @@ teardown() { teardown_sandbox; }
   [ "$output" -gt 3500 ]
   [ "$output" -le 3600 ]
 }
+
+@test "mute: is_muted returns 1 on corrupt mute.json" {
+  echo "{not valid json" > "$CLAUDE_PROJECT_DIR/.claude/bonsai/mute.json"
+  run bonsai_mute_is_muted "$CLAUDE_PROJECT_DIR"
+  [ "$status" -eq 1 ]
+}
+
+@test "mute: remaining_seconds returns 0 on corrupt mute.json" {
+  echo "{not valid json" > "$CLAUDE_PROJECT_DIR/.claude/bonsai/mute.json"
+  run bonsai_mute_remaining_seconds "$CLAUDE_PROJECT_DIR"
+  [ "$status" -eq 0 ]
+  [ "$output" = "0" ]
+}

@@ -39,8 +39,9 @@ bonsai_mute_sleep() {
   local until=$(( $(date -u +%s) + secs ))
   local file
   file="$(_bonsai_mute_file "$project_dir")"
-  bonsai_ensure_dir "$(dirname "$file")" || return 1
-  jq -n --argjson u "$until" '{"__version":1,"mute_until_epoch":$u}' > "$file"
+  local content
+  content="$(jq -n --argjson u "$until" '{"__version":1,"mute_until_epoch":$u}')" || return 1
+  bonsai_json_write "$file" "$content"
 }
 
 bonsai_mute_wake() {
@@ -71,6 +72,8 @@ bonsai_mute_remaining_seconds() {
   [[ -f "$file" ]] || { printf '0'; return 0; }
   local until
   until="$(jq -r '.mute_until_epoch // 0' "$file" 2>/dev/null)"
+  # Guard against corrupt file: empty/null until → 0 remaining.
+  [[ -z "$until" || "$until" == "null" ]] && { printf '0'; return 0; }
   local now
   now="$(date -u +%s)"
   local rem=$(( until - now ))

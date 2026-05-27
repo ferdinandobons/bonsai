@@ -1,8 +1,7 @@
 {
   "name": "bonsai",
   "owner": {
-    "name": "Ferdinando Bonsegna",
-    "url": "https://github.com/ferdinandobons"
+    "name": "Ferdinando Bonsegna"
   },
   "description": "A patient gardener for your code. Proactive observations during Claude Code sessions.",
   "plugins": [

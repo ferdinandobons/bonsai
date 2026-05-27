@@ -2,7 +2,10 @@
   "name": "bonsai",
   "version": "0.1.0",
   "description": "Silent observer that surfaces high-signal observations between turns.",
-  "author": "Ferdinando Bonsegna",
+  "author": {
+    "name": "Ferdinando Bonsegna",
+    "url": "https://github.com/ferdinandobons"
+  },
   "license": "Apache-2.0",
   "homepage": "https://github.com/ferdinandobons/bonsai"
 }

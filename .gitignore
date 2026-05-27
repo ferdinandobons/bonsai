@@ -10,6 +10,7 @@ Thumbs.db
 tests/_tmp/
 tests/_run/
 coverage/
+.bats-cache/
 
 # Logs (local only)
 *.log

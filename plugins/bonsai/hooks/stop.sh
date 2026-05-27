@@ -68,6 +68,11 @@ main() {
   local now; now="$(bonsai_now_iso)"
   local state_file="$cwd/.claude/bonsai/state.json"
   local hashes; hashes="$(jq -c '.dedup_hashes // []' "$state_file" 2>/dev/null || printf '[]')"
+  # last_run_iso is what the gardener uses to bound its transcript window
+  # and to filter "files modified since last run". Without it the gardener
+  # falls back to reading the entire session, blowing the token budget.
+  local last_run_iso
+  last_run_iso="$(jq -r '.last_run_iso // "1970-01-01T00:00:00Z"' "$state_file" 2>/dev/null || printf '1970-01-01T00:00:00Z')"
   local trimmed_md="$cwd/.claude/bonsai/trimmed.md"
   local trimmed_content=""
   [[ -f "$trimmed_md" ]] && trimmed_content="$(cat "$trimmed_md")"
@@ -89,6 +94,7 @@ main() {
     --arg sid "$session_id" \
     --arg tp "$transcript_path" \
     --arg now "$now" \
+    --arg last_run "$last_run_iso" \
     --arg model "$model" \
     --argjson hashes "$hashes" \
     --argjson lenses "$lenses" \
@@ -97,6 +103,7 @@ main() {
       "project_dir": $cwd,
       "session_id": $sid,
       "transcript_path": $tp,
+      "last_run_iso": $last_run,
       "now_iso": $now,
       "gardener_model": $model,
       "lenses_enabled": $lenses,

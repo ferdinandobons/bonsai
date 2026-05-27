@@ -26,8 +26,9 @@ bonsai_dedup_hash() {
   local n_title n_ev
   n_title="$(_bonsai_dedup_normalize "$title")"
   n_ev="$(_bonsai_dedup_normalize "$evidence")"
+  # Use shasum (macOS) if present, fall back to sha256sum (Linux CI).
   printf '%s|%s' "$n_title" "$n_ev" \
-    | shasum -a 256 \
+    | { shasum -a 256 2>/dev/null || sha256sum; } \
     | awk '{print $1}'
 }
 

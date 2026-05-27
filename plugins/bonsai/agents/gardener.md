@@ -248,7 +248,7 @@ After emitting, check for branches eligible for auto-archive. Read
 ```bash
 bash -c '
   source "$CLAUDE_PLUGIN_ROOT/lib/archive.sh"
-  bonsai_archive_eligible "<project_dir>"
+  bonsai_archive_run "<project_dir>"
 '
 ```
 

@@ -111,6 +111,16 @@ bonsai_quota_caps_ok() {
     v="$(bonsai_json_get "$cfg" '.quota.observations_per_day')"
     [[ "$v" =~ ^[0-9]+$ ]] && p_obs_cap="$v"
   fi
+  # Global caps can be overridden via $CLAUDE_PLUGIN_DATA/config.json
+  # (spec §10: global_quota.runs_per_day / .observations_per_day).
+  local global_cfg="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/config.json"
+  if [[ -f "$global_cfg" ]]; then
+    local gv
+    gv="$(bonsai_json_get "$global_cfg" '.global_quota.runs_per_day')"
+    [[ "$gv" =~ ^[0-9]+$ ]] && g_runs_cap="$gv"
+    gv="$(bonsai_json_get "$global_cfg" '.global_quota.observations_per_day')"
+    [[ "$gv" =~ ^[0-9]+$ ]] && g_obs_cap="$gv"
+  fi
   local p_runs p_obs g_runs g_obs
   p_runs="$(bonsai_quota_count_events_24h "run" "$project_dir")"
   p_obs="$(bonsai_quota_count_events_24h "observation" "$project_dir")"

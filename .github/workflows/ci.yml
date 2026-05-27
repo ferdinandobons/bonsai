@@ -16,7 +16,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y jq shellcheck
-          sudo npm install -g bats
+          # bats-core (the maintained fork); the `bats` npm package is abandoned
+          git clone https://github.com/bats-core/bats-core.git --depth 1 --branch v1.11.0 /tmp/bats-core
+          sudo /tmp/bats-core/install.sh /usr/local
 
       - name: Validate JSON manifests
         run: |

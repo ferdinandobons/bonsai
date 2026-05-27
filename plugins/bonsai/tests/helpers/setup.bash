@@ -22,9 +22,15 @@ teardown_sandbox() {
   fi
 }
 
-# Source a lib script by relative path under lib/
+# Source a lib script by relative path under lib/.
+# Fails loudly with context if the file isn't there yet (helps when a test is
+# run before its corresponding lib has been written).
 source_lib() {
-  local lib="$1"
+  local lib_path="$BONSAI_PLUGIN_ROOT/lib/$1"
+  if [[ ! -f "$lib_path" ]]; then
+    echo "source_lib: $lib_path not found (has the lib been written yet?)" >&2
+    return 1
+  fi
   # shellcheck disable=SC1090
-  source "$BONSAI_PLUGIN_ROOT/lib/$lib"
+  source "$lib_path"
 }

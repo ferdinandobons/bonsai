@@ -25,3 +25,15 @@ teardown() {
   run jq -e '.tended | length == 2' "$CLAUDE_PLUGIN_DATA/projects.json"
   [ "$status" -eq 0 ]
 }
+
+@test "smoke: fixture_projects_json with zero args produces empty array (not [\"\"])" {
+  fixture_projects_json
+  run jq -e '.tended == []' "$CLAUDE_PLUGIN_DATA/projects.json"
+  [ "$status" -eq 0 ]
+}
+
+@test "smoke: source_lib reports a clear error if the lib does not exist" {
+  run source_lib "definitely-not-a-real-lib.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"not found"* ]]
+}

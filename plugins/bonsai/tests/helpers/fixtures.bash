@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # Reusable fixture builders for tests.
 
-# Create a minimal projects.json with given paths
+# Create a minimal projects.json with given paths.
+# Zero args → tended is the empty array []. (Without this guard,
+# printf '%s\n' with no args still prints a blank line and we'd get [""].)
 fixture_projects_json() {
   local file="$CLAUDE_PLUGIN_DATA/projects.json"
-  jq -n --argjson tended "$(printf '%s\n' "$@" | jq -R . | jq -s .)" \
-    '{"__version": 1, "tended": $tended}' > "$file"
+  if [[ $# -eq 0 ]]; then
+    jq -n '{"__version": 1, "tended": []}' > "$file"
+  else
+    jq -n --argjson tended "$(printf '%s\n' "$@" | jq -R . | jq -s .)" \
+      '{"__version": 1, "tended": $tended}' > "$file"
+  fi
 }
 
 # Create a minimal per-project state.json

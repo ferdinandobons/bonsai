@@ -55,7 +55,11 @@ bonsai_index_regenerate() {
   done
   shopt -u nullglob
 
-  {
+  # Atomic write: tmp + mv so readers (cat, /bonsai:observe) never see a
+  # half-written INDEX.md during regeneration.
+  local tmp
+  tmp="$(mktemp "${idx}.tmp.XXXXXX")" || return 1
+  if ! {
     printf '# Bonsai · index\n\n'
     printf '_Last updated: %s_\n\n' "$(bonsai_now_iso)"
     _bonsai_index_section "🔴 Open critical" "${crit[@]}"
@@ -64,5 +68,9 @@ bonsai_index_regenerate() {
     _bonsai_index_section "✅ Kept"          "${kept[@]}"
     _bonsai_index_section "🚫 Trimmed"       "${trimmed[@]}"
     _bonsai_index_section "🗄 Archived"      "${archived[@]}"
-  } > "$idx"
+  } > "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$idx" || { rm -f "$tmp"; return 1; }
 }

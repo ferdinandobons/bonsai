@@ -50,5 +50,18 @@ write_obs() {
 
 @test "index: regenerate with no branches still creates valid INDEX.md" {
   bonsai_index_regenerate "$CLAUDE_PROJECT_DIR"
-  [ -f "$CLAUDE_PROJECT_DIR/.claude/bonsai/INDEX.md" ]
+  local idx="$CLAUDE_PROJECT_DIR/.claude/bonsai/INDEX.md"
+  [ -f "$idx" ]
+  grep -q "Open critical (0)" "$idx"
+  grep -q "Open normal (0)"   "$idx"
+  grep -q "Open low (0)"      "$idx"
+  grep -q "Kept (0)"          "$idx"
+  grep -q "Trimmed (0)"       "$idx"
+  grep -q "Archived (0)"      "$idx"
+}
+
+@test "index: regenerate leaves no .tmp file behind" {
+  bonsai_index_regenerate "$CLAUDE_PROJECT_DIR"
+  run bash -c "ls $CLAUDE_PROJECT_DIR/.claude/bonsai/INDEX.md.tmp.* 2>/dev/null"
+  [ -z "$output" ]
 }

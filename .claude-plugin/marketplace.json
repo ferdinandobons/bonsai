@@ -1,0 +1,16 @@
+{
+  "name": "bonsai",
+  "owner": {
+    "name": "Ferdinando Bonsegna",
+    "url": "https://github.com/ferdinandobons"
+  },
+  "description": "A patient gardener for your code. Proactive observations during Claude Code sessions.",
+  "plugins": [
+    {
+      "name": "bonsai",
+      "source": "./plugins/bonsai",
+      "description": "Silent observer that surfaces high-signal observations between turns.",
+      "version": "0.1.0"
+    }
+  ]
+}

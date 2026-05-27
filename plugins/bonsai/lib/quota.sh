@@ -19,15 +19,24 @@ _bonsai_quota_init_if_missing() {
 }
 
 # Record an event. kind: run | observation | push. scope: project path.
+# Also prunes events older than 24h on every write — keeps quota.json bounded.
 bonsai_quota_record_event() {
   local kind="$1"
   local scope="$2"
   _bonsai_quota_init_if_missing || return 1
   local file; file="$(_bonsai_quota_file)"
   local now; now="$(date -u +%s)"
-  local updated
-  updated="$(jq --arg k "$kind" --arg s "$scope" --argjson e "$now" \
-    '.events += [{"kind":$k,"scope":$s,"epoch":$e}]' "$file" 2>/dev/null || true)"
+  local cutoff=$(( now - 86400 ))
+  # Prune-then-append in one jq pass so we never read stale entries again.
+  # Use if-guard so callers with set -E (bats) don't trap on corrupt JSON.
+  local updated=""
+  if ! updated="$(jq --arg k "$kind" --arg s "$scope" \
+                     --argjson e "$now" --argjson c "$cutoff" \
+        '.events = ([.events[] | select(.epoch >= $c)]
+                   + [{"kind":$k,"scope":$s,"epoch":$e}])' \
+        "$file" 2>/dev/null)"; then
+    updated=""
+  fi
   if [[ -z "$updated" ]]; then
     bonsai_log ERROR "quota_record_event: corrupt quota.json at $file"
     return 1
@@ -75,6 +84,8 @@ bonsai_quota_throttle_ok() {
       # Cross-platform date → epoch (BSD vs GNU)
       last_epoch="$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" '+%s' 2>/dev/null \
                     || date -u -d "$iso" '+%s' 2>/dev/null || echo 0)"
+    else
+      bonsai_log WARN "throttle_ok: state.json exists but last_run_iso missing/empty — treating as first run"
     fi
   fi
   [[ "$last_epoch" -eq 0 ]] && return 0
@@ -85,7 +96,11 @@ bonsai_quota_throttle_ok() {
 
 # Caps check: per-project runs/observations + global runs/observations.
 bonsai_quota_caps_ok() {
-  local project_dir="${CLAUDE_PROJECT_DIR:-/}"
+  local project_dir="${CLAUDE_PROJECT_DIR:-}"
+  if [[ -z "$project_dir" || "$project_dir" == "/" ]]; then
+    bonsai_log WARN "caps_ok: CLAUDE_PROJECT_DIR unset or '/' — per-project caps will not match real events"
+    project_dir="/"
+  fi
   local cfg; cfg="$(_bonsai_config_file "$project_dir")"
   local p_runs_cap=10 p_obs_cap=20
   local g_runs_cap=50 g_obs_cap=100
@@ -113,20 +128,20 @@ bonsai_quota_update_last_run() {
   local state; state="$(_bonsai_state_file "$project_dir")"
   bonsai_ensure_dir "$(dirname "$state")" || return 1
   local now; now="$(bonsai_now_iso)"
+  # Use `if`-guarded command so callers with `set -e` / `set -E` (e.g. bats)
+  # don't blow up when jq legitimately fails on a corrupt state.json.
+  local updated=""
   if [[ -f "$state" ]]; then
-    local updated
-    updated="$(jq --arg t "$now" '.last_run_iso = $t' "$state" 2>/dev/null || true)"
-    if [[ -z "$updated" ]]; then
-      # Corrupt state.json: rebuild fresh.
-      bonsai_log WARN "quota_update_last_run: corrupt state.json, rebuilding"
-      bonsai_json_write "$state" "$(jq -n --arg t "$now" \
-        '{"__version":1,"last_run_iso":$t,"dedup_hashes":[]}')"
-      return 0
+    if ! updated="$(jq --arg t "$now" '.last_run_iso = $t' "$state" 2>/dev/null)"; then
+      updated=""
     fi
-    bonsai_json_write "$state" "$updated"
+  fi
+  if [[ -z "$updated" ]]; then
+    [[ -f "$state" ]] && bonsai_log WARN "quota_update_last_run: corrupt or missing state.json, rebuilding"
+    local fresh
+    fresh="$(jq -n --arg t "$now" '{"__version":1,"last_run_iso":$t,"dedup_hashes":[]}')"
+    bonsai_json_write "$state" "$fresh"
   else
-    local content; content="$(jq -n --arg t "$now" \
-      '{"__version":1,"last_run_iso":$t,"dedup_hashes":[]}')"
-    bonsai_json_write "$state" "$content"
+    bonsai_json_write "$state" "$updated"
   fi
 }

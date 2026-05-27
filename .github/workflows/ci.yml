@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq shellcheck
+          sudo npm install -g bats
+
+      - name: Validate JSON manifests
+        run: |
+          jq empty .claude-plugin/marketplace.json
+          jq empty plugins/bonsai/.claude-plugin/plugin.json
+
+      - name: Shellcheck
+        run: |
+          shellcheck -x plugins/bonsai/lib/*.sh
+          shellcheck -x plugins/bonsai/hooks/*.sh
+
+      - name: Bats unit tests
+        run: |
+          cd plugins/bonsai
+          bats tests/unit
+
+      - name: Bats integration tests
+        run: |
+          cd plugins/bonsai
+          bats tests/integration

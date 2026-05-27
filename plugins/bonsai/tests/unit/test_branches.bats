@@ -128,3 +128,32 @@ teardown() { teardown_sandbox; }
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
+
+@test "branches: write fails on null/missing non-id field" {
+  local obs='{"id":"2026-05-27-200","title":"T","created_iso":null,"lens":"technical","severity":"normal","tldr":"x","evidence_ref":"r","evidence_detail":"d","suggested_action":"a","action_brief":"b","related_branch_ids":[],"dedup_hash":"h"}'
+  run bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs"
+  [ "$status" -eq 1 ]
+}
+
+@test "branches: title containing a colon is quoted and roundtrips" {
+  local obs='{"id":"2026-05-27-201","title":"Cache: invalidation bug","created_iso":"2026-05-27T00:00:00Z","lens":"technical","severity":"normal","tldr":"x","evidence_ref":"src/cache.ts:42","evidence_detail":"d","suggested_action":"a","action_brief":"b","related_branch_ids":[],"dedup_hash":"h"}'
+  bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs"
+  local f; f="$(bonsai_branches_find_by_id "$CLAUDE_PROJECT_DIR" "2026-05-27-201")"
+  [ -f "$f" ]
+  # Frontmatter still parseable: title field on a single line, evidence_ref intact
+  grep -qE '^title: "Cache: invalidation bug"$' "$f"
+  grep -qE '^evidence_ref: "src/cache\.ts:42"$' "$f"
+  run bonsai_branches_read_field "$f" "title"
+  [ "$output" = "Cache: invalidation bug" ]
+  run bonsai_branches_read_field "$f" "evidence_ref"
+  [ "$output" = "src/cache.ts:42" ]
+}
+
+@test "branches: set_status rejects invalid status with log" {
+  local obs='{"id":"2026-05-27-202","title":"X","created_iso":"2026-05-27T00:00:00Z","lens":"technical","severity":"normal","tldr":"x","evidence_ref":"r","evidence_detail":"d","suggested_action":"a","action_brief":"b","related_branch_ids":[],"dedup_hash":"h"}'
+  bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs"
+  local f; f="$(bonsai_branches_find_by_id "$CLAUDE_PROJECT_DIR" "2026-05-27-202")"
+  run bonsai_branches_set_status "$f" "frobnicate"
+  [ "$status" -eq 1 ]
+  grep -q "invalid status" "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log"
+}

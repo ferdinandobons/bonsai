@@ -29,42 +29,82 @@ bonsai_branches_allocate_id() {
   printf '%s-%03d' "$today" $((max + 1))
 }
 
+# Extract a single field from the observation JSON, fail loudly on missing/null.
+_bonsai_branches_extract() {
+  local obs_json="$1"
+  local field="$2"
+  local v=""
+  if ! v="$(printf '%s' "$obs_json" | jq -r --arg f "$field" '.[$f]' 2>/dev/null)"; then
+    return 1
+  fi
+  if [[ -z "$v" || "$v" == "null" ]]; then
+    return 1
+  fi
+  printf '%s' "$v"
+}
+
+# Sanitize a string for use in single-line YAML scalar:
+# strip newlines (replaced with space) so it never escapes its line.
+_bonsai_yaml_sanitize_oneline() {
+  printf '%s' "$1" | tr '\n\r' '  '
+}
+
 # Write a branch file from a JSON observation. Returns 0 on success.
 bonsai_branches_write() {
   local project_dir="$1"
   local obs_json="$2"
-  local id title slug
-  if ! id=$(printf '%s' "$obs_json" | jq -r '.id' 2>/dev/null); then
-    bonsai_log ERROR "branches_write: failed to extract id"
-    return 1
-  fi
-  if [[ -z "$id" || "$id" == "null" ]]; then
-    bonsai_log ERROR "branches_write: missing id"
-    return 1
-  fi
-  if ! title=$(printf '%s' "$obs_json" | jq -r '.title' 2>/dev/null); then
-    bonsai_log ERROR "branches_write: failed to extract title"
-    return 1
-  fi
-  slug="$(bonsai_slugify "$title")"
+  # Validate every required field up front. Missing/null → fail loudly.
+  local id title created lens severity evidence_ref dedup_hash \
+        tldr evidence_detail suggested_action action_brief
+  for field in id title created_iso lens severity evidence_ref dedup_hash \
+               tldr evidence_detail suggested_action action_brief; do
+    local v
+    if ! v="$(_bonsai_branches_extract "$obs_json" "$field")"; then
+      bonsai_log ERROR "branches_write: missing or null field '$field'"
+      return 1
+    fi
+    case "$field" in
+      id) id="$v" ;;
+      title) title="$v" ;;
+      created_iso) created="$v" ;;
+      lens) lens="$v" ;;
+      severity) severity="$v" ;;
+      evidence_ref) evidence_ref="$v" ;;
+      dedup_hash) dedup_hash="$v" ;;
+      tldr) tldr="$v" ;;
+      evidence_detail) evidence_detail="$v" ;;
+      suggested_action) suggested_action="$v" ;;
+      action_brief) action_brief="$v" ;;
+    esac
+  done
+
+  local slug; slug="$(bonsai_slugify "$title")"
   local dir; dir="$(_bonsai_branches_dir "$project_dir")"
   bonsai_ensure_dir "$dir" || return 1
   local file="$dir/${id}-${slug}.md"
+
+  # YAML safety: quote the title (it's user/LLM text and may contain colons).
+  # Escape internal " and strip newlines so the frontmatter stays single-line.
+  local safe_title; safe_title="$(_bonsai_yaml_sanitize_oneline "$title")"
+  safe_title="${safe_title//\"/\\\"}"
+  local safe_evidence; safe_evidence="$(_bonsai_yaml_sanitize_oneline "$evidence_ref")"
+  safe_evidence="${safe_evidence//\"/\\\"}"
+
   {
     printf -- '---\n'
-    printf 'id: %s\n'           "$id"
-    printf 'created: %s\n'      "$(printf '%s' "$obs_json" | jq -r '.created_iso')"
-    printf 'lens: %s\n'         "$(printf '%s' "$obs_json" | jq -r '.lens')"
-    printf 'severity: %s\n'     "$(printf '%s' "$obs_json" | jq -r '.severity')"
+    printf 'id: %s\n'             "$id"
+    printf 'created: %s\n'        "$created"
+    printf 'lens: %s\n'           "$lens"
+    printf 'severity: %s\n'       "$severity"
     printf 'status: open\n'
-    printf 'title: %s\n'        "$title"
-    printf 'evidence_ref: %s\n' "$(printf '%s' "$obs_json" | jq -r '.evidence_ref')"
-    printf 'dedup_hash: %s\n'   "$(printf '%s' "$obs_json" | jq -r '.dedup_hash')"
+    printf 'title: "%s"\n'        "$safe_title"
+    printf 'evidence_ref: "%s"\n' "$safe_evidence"
+    printf 'dedup_hash: %s\n'     "$dedup_hash"
     printf -- '---\n\n'
-    printf '%s\n\n'             "$(printf '%s' "$obs_json" | jq -r '.tldr')"
-    printf '## Evidence\n%s\n\n' "$(printf '%s' "$obs_json" | jq -r '.evidence_detail')"
-    printf '## Suggested action\n%s\n\n' "$(printf '%s' "$obs_json" | jq -r '.suggested_action')"
-    printf '## Action brief\n%s\n\n' "$(printf '%s' "$obs_json" | jq -r '.action_brief')"
+    printf '%s\n\n'                       "$tldr"
+    printf '## Evidence\n%s\n\n'          "$evidence_detail"
+    printf '## Suggested action\n%s\n\n'  "$suggested_action"
+    printf '## Action brief\n%s\n\n'      "$action_brief"
     local related; related="$(printf '%s' "$obs_json" | jq -r '.related_branch_ids[]?' 2>/dev/null)"
     if [[ -n "$related" ]]; then
       printf '## Related\n'
@@ -75,6 +115,7 @@ bonsai_branches_write() {
 }
 
 # Read a single frontmatter field value.
+# For quoted YAML strings ("..."), strip surrounding quotes from the output.
 bonsai_branches_read_field() {
   local file="$1"
   local key="$2"
@@ -84,17 +125,29 @@ bonsai_branches_read_field() {
     /^---$/ { in_fm = !in_fm; next }
     in_fm && $0 ~ "^"k": " {
       sub("^"k": ", "")
+      # Strip surrounding double-quotes if present (from sanitized write path)
+      if (substr($0,1,1) == "\"" && substr($0,length($0),1) == "\"") {
+        $0 = substr($0, 2, length($0)-2)
+        gsub("\\\\\"", "\"")
+      }
       print
       exit
     }
   ' "$file"
 }
 
-# Set status: open | trimmed | kept | archived.
+# Set status to one of: open | trimmed | kept | archived. Reject anything else.
 bonsai_branches_set_status() {
   local file="$1"
   local new_status="$2"
   [[ -f "$file" ]] || return 1
+  case "$new_status" in
+    open|trimmed|kept|archived) ;;
+    *)
+      bonsai_log ERROR "branches_set_status: invalid status '$new_status'"
+      return 1
+      ;;
+  esac
   local tmp
   tmp="$(mktemp "${file}.tmp.XXXXXX")" || return 1
   awk -v ns="$new_status" '

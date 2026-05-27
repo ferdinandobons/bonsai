@@ -53,3 +53,18 @@ teardown() { teardown_sandbox; }
   run bonsai_dedup_contains "$CLAUDE_PROJECT_DIR" "abc"
   [ "$status" -eq 1 ]
 }
+
+@test "dedup: add on corrupt state.json returns 1 and logs error" {
+  echo "{not valid" > "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
+  run bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "abc"
+  [ "$status" -eq 1 ]
+  grep -q "dedup_add: corrupt" "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log"
+}
+
+@test "dedup: rolling window keeps newest at the tail (insertion order)" {
+  for i in $(seq -f "%02g" 1 5); do
+    bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "h-$i"
+  done
+  run jq -r '.dedup_hashes | last' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
+  [ "$output" = "h-05" ]
+}

@@ -50,9 +50,19 @@ bonsai_dedup_add() {
   local file; file="$(_bonsai_state_file "$project_dir")"
   bonsai_ensure_dir "$(dirname "$file")" || return 1
   if [[ ! -f "$file" ]]; then
-    bonsai_json_write "$file" \
-      "$(jq -n --arg h "$hash" \
-        '{"__version":1,"last_run_iso":"1970-01-01T00:00:00Z","dedup_hashes":[$h]}')"
+    # Guard the init jq just like the update path — if jq fails we must not
+    # write an empty file silently.
+    local init=""
+    if ! init="$(jq -n --arg h "$hash" \
+        '{"__version":1,"last_run_iso":"1970-01-01T00:00:00Z","dedup_hashes":[$h]}' 2>/dev/null)"; then
+      bonsai_log ERROR "dedup_add: jq failed during init at $file"
+      return 1
+    fi
+    if [[ -z "$init" ]]; then
+      bonsai_log ERROR "dedup_add: empty init output at $file"
+      return 1
+    fi
+    bonsai_json_write "$file" "$init"
     return $?
   fi
   local updated=""

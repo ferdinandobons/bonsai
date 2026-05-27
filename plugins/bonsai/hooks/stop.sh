@@ -82,8 +82,9 @@ main() {
     [[ -n "$l" ]] && lenses="$l"
   fi
 
-  local instruction
-  instruction="$(jq -n \
+  # Build the structured prompt_input (the gardener subagent's input).
+  local prompt_input
+  prompt_input="$(jq -n \
     --arg cwd "$cwd" \
     --arg sid "$session_id" \
     --arg tp "$transcript_path" \
@@ -93,21 +94,37 @@ main() {
     --argjson lenses "$lenses" \
     --arg trimmed "$trimmed_content" \
     '{
-      "directive": "Dispatch the bonsai:gardener subagent in the background (run_in_background: true) with this prompt:",
-      "subagent_type": "bonsai:gardener",
-      "prompt_input": {
-        "project_dir": $cwd,
-        "session_id": $sid,
-        "transcript_path": $tp,
-        "now_iso": $now,
-        "gardener_model": $model,
-        "lenses_enabled": $lenses,
-        "recent_dedup_hashes": $hashes,
-        "trimmed_anti_patterns": $trimmed
-      }
+      "project_dir": $cwd,
+      "session_id": $sid,
+      "transcript_path": $tp,
+      "now_iso": $now,
+      "gardener_model": $model,
+      "lenses_enabled": $lenses,
+      "recent_dedup_hashes": $hashes,
+      "trimmed_anti_patterns": $trimmed
     }')"
 
-  jq -n --arg ctx "$instruction" \
+  # Emit additionalContext as a natural-language instruction (not raw JSON-as-string).
+  # Claude reads additionalContext as plain text appended to its context; this
+  # text tells Claude what to do next. The structured prompt_input is included
+  # as a fenced JSON block so Claude can pass it verbatim to the Agent tool.
+  # shellcheck disable=SC2016  # backticks below are markdown fences, not subshells
+  local ctx_text
+  ctx_text=$'Bonsai (proactive observer) has been triggered for this session. '
+  ctx_text+=$'The gating chain (whitelist + mute + throttle + quota) passed; '
+  ctx_text+=$'you should now dispatch the bonsai:gardener subagent.\n\n'
+  ctx_text+=$'Please call the Agent tool with:\n'
+  ctx_text+=$'- subagent_type: "bonsai:gardener"\n'
+  ctx_text+=$'- run_in_background: true\n'
+  ctx_text+=$'- prompt: the gardener\'s prompt template, populated with this input JSON:\n\n'
+  ctx_text+=$'```json\n'
+  ctx_text+="$prompt_input"
+  ctx_text+=$'\n```\n\n'
+  ctx_text+=$'The gardener will read this input, run its triage, and emit observations to '
+  ctx_text+=$'.claude/bonsai/branches/. It runs entirely in the background — do not wait '
+  ctx_text+=$'for it before responding to the user.'
+
+  jq -n --arg ctx "$ctx_text" \
     '{"hookSpecificOutput": {"hookEventName":"Stop","additionalContext": $ctx}}'
 }
 

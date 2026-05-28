@@ -16,15 +16,16 @@ Print this welcome message to the user verbatim:
 ```
 Bonsai is now watching this project.
 
-Bonsai runs after each turn, with at least 5 minutes between checks.
+Bonsai runs after each turn — at least every 5 minutes when your code changed,
+every 20 minutes on idle/conversational turns (both configurable).
 It emits zero observations most of the time — by design.
 It never modifies your code. It only observes the session and surfaces
 high-signal observations: bugs, strategic blind spots, workflow tips.
 
-Tier:
-  CRITICAL  → push notification + chip + log
-  NORMAL    → chip + log
-  LOW       → log only
+Severity (orders how prominently an observation surfaces in INDEX.md / list):
+  CRITICAL  → top of INDEX.md
+  NORMAL    → in INDEX.md
+  LOW       → collapsed / log only
 
 Where things live:
   .claude/bonsai/INDEX.md             ← human-readable index

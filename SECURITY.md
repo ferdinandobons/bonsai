@@ -16,20 +16,23 @@ Bonsai is a Claude Code plugin that executes shell scripts in your local environ
 
 ### What Bonsai is allowed to do
 
-- Read your Claude Code session transcript (via `mcp__ccd_session_mgmt__search_session_transcripts`).
-- Read files in your project directory that have been modified since the last gardener run.
-- Optionally run read-only `git` commands (`git status`, `git diff --stat HEAD`) when a `.git/` directory exists.
+- Read your Claude Code session transcript: the Stop hook slices the transcript to its last ~200 lines (configurable via `transcript_tail_lines`) and the gardener reads that slice directly with the `Read` tool.
+- Read files in your project directory to gather evidence (and the `git diff HEAD`, excluding `.claude/bonsai/`, passed to it as context).
+- Optionally run read-only `git` commands when a `.git/` directory exists.
 - Write to `${CLAUDE_PROJECT_DIR}/.claude/bonsai/` (branch files, INDEX.md, state.json, trimmed.md).
-- Write to `${CLAUDE_PLUGIN_DATA}/` (whitelist, global config, quota counters, mute state, logs).
-- Send push notifications **only for `critical` severity** observations, rate-limited to 5 per project per hour.
-- Spawn task chips (`mcp__ccd_session__spawn_task`) for `critical` and `normal` observations.
+- Write to `${CLAUDE_PLUGIN_DATA}/` (whitelist, global config, quota counters, mute state, logs, transcript slices, per-session judge scratch dir).
+- Run a cheap second model (`claude -p --model haiku`) over its own candidate observations to dedup/calibrate them before writing (the judge pass).
 
 ### What Bonsai is explicitly NOT allowed to do
 
-- **Edit any file outside `.claude/bonsai/`.** The gardener subagent's `allowed-tools` list does not include `Edit`. Bash is restricted to read-only commands in the gardener's system prompt. Write is restricted to the bonsai directory.
-- **Make any network call.** No `WebSearch`, no `WebFetch`. The gardener's `allowed-tools` does not include them.
-- **Run arbitrary code suggested by the LLM.** The gardener cannot execute its own observations; it only writes them to files and creates chips. The user has to click a chip (which opens a separate Claude Code session) to act on a suggestion.
-- **Spawn sub-subagents.** `disable-model-invocation: true` in the gardener's frontmatter prevents recursive agent dispatch.
+- **Edit any file outside `.claude/bonsai/`.** The gardener's frontmatter declares only `Bash, Read, Grep, Glob, Write` — no `Edit`. Bash is restricted to read-only commands in the gardener's system prompt; Write is restricted to the bonsai directory.
+- **Make any network call.** No `WebSearch`, no `WebFetch` in the gardener's tool list.
+- **Run arbitrary code suggested by the LLM.** The gardener only writes observations to files; it never executes them. The user reads `INDEX.md` / `/bonsai:list` and decides what to act on.
+- **Spawn sub-subagents.** The gardener's tool list does not include the `Task` tool, so it cannot dispatch further agents.
+
+### A note on slash-command arguments
+
+Slash commands (`/bonsai:done <id>`, `/bonsai:config <key> <value>`, …) pass their arguments into a shell invocation. The argument placeholders are quoted in each `commands/*.md` so shell metacharacters in an argument are treated as data, not code. Note that Claude Code itself interpolates these placeholders textually before the shell parses them (upstream behavior), so treat command arguments you type as trusted input.
 
 ### Failure modes that affect security
 
@@ -49,5 +52,5 @@ Only the latest released version receives security fixes. Pre-1.0, expect rapid 
 
 | Version | Supported |
 |---------|-----------|
-| 0.1.x   | ✅ Latest only (0.1.3 at time of writing) |
-| < 0.1.0 | ❌ No releases existed before 0.1.0 |
+| Latest release (0.5.x) | ✅ |
+| Older releases | ❌ |

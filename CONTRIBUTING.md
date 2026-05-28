@@ -30,9 +30,10 @@ bonsai/                                  # repo root = marketplace root
 └── plugins/bonsai/
     ├── .claude-plugin/plugin.json       # plugin manifest (declares Stop hook)
     ├── agents/gardener.md               # the bonsai:gardener subagent
-    ├── commands/                        # /bonsai:* slash commands (11 files)
+    ├── commands/                        # /bonsai:* slash command wrappers (thin .md)
     ├── hooks/stop.sh                    # Stop hook gatekeeper
-    ├── lib/                             # shell helpers (11 files)
+    ├── lib/                             # shell helpers
+    │   └── commands/                    # command implementation scripts (+ _bootstrap.sh)
     ├── tests/
     │   ├── unit/                        # bats unit tests
     │   ├── integration/                 # bats end-to-end Stop hook test

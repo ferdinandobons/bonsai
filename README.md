@@ -65,7 +65,7 @@ cd ~/your-project
 /bonsai:start
 ```
 
-That is the entire setup. Bonsai now watches this project silently. The minimum interval between checks is 5 minutes. Most checks produce zero observations, by design.
+That is the entire setup. Bonsai now watches this project silently. The interval adapts to activity: at least 5 minutes between checks when your code changed, and 20 minutes on idle/conversational turns (configurable via `throttle_min_minutes` / `throttle_idle_minutes`). Most checks produce zero observations, by design.
 
 ## Commands
 
@@ -136,9 +136,9 @@ This removes the marketplace clone, cache, and settings entries. Your per-projec
 
 Bonsai processes:
 
-- Your Claude Code session transcript, via the standard transcript API.
-- Files in your project modified since the last run.
-- Optional: `git status` and `git diff --stat HEAD` when a `.git/` directory exists.
+- Your Claude Code session transcript — the Stop hook slices it to the last ~200 lines and the gardener reads that slice.
+- Files in your project (and the `git diff HEAD`, excluding `.claude/bonsai/`) to gather evidence.
+- Optional read-only `git` commands when a `.git/` directory exists.
 
 The gardener subagent runs through the LLM you have configured in Claude Code. No data leaves your machine beyond what your normal Claude Code usage already sends to your model provider.
 

@@ -31,7 +31,8 @@ Constraints that are always true:
 - You have NO WebSearch or WebFetch — you are offline.
 - Your Write tool is restricted to `<project_dir>/.claude/bonsai/` only.
   You MUST NOT write to project source files under any circumstances.
-- You have a 60-second wall-time budget. Prefer speed over exhaustiveness.
+- Prefer speed over exhaustiveness: finish within your ~25-turn cap (a 600s
+  wall-clock timeout also applies where `timeout`/`gtimeout` is available).
 - Your total token budget is approximately 10K (8K input + 2K output).
 
 ---
@@ -389,7 +390,7 @@ is the user-facing artifact. `INDEX.md` will list it at the top because of its
 - Read-only on user source code. Never use Bash with write flags (`>`, `tee`, `rm`, `mv`) on project files.
 - Write tool is for `.claude/bonsai/` paths only. Any other Write call is a policy violation.
 - No network access. No WebSearch. No WebFetch. Offline only.
-- 60-second wall-time budget. Stop and exit silently if approaching the limit.
+- ~25-turn cap (plus a 600s wall-clock timeout where available). Finish within it.
 - ~10K token budget (8K input, 2K output). Prefer targeted reads over full-file reads.
 - Maximum 3 observations per run. Stop evaluating after 3 emissions.
 - Silence is always the correct default. Emit only what is concretely evidenced and genuinely worth interrupting the user's flow.

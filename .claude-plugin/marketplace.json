@@ -9,7 +9,7 @@
       "name": "bonsai",
       "source": "./plugins/bonsai",
       "description": "Silent observer that surfaces high-signal observations between turns.",
-      "version": "0.3.0"
+      "version": "0.3.1"
     }
   ]
 }

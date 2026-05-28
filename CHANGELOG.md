@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.3.1] — 2026-05-28
+
+### Fixed
+- **CI: shellcheck on `lib/dispatch.sh` and `hooks/stop.sh` now passes.**
+  Two informational warnings that broke the v0.3.0 CI:
+  - `SC2016` in `dispatch.sh` — flagged the single-quoted `bash -c '…$1…'`
+    body in `bonsai_dispatch_gardener`. The single quotes are intentional
+    (we want `$1` to refer to the positional arg passed to the nested
+    subshell, not expand at the outer shell). Added `shellcheck disable=SC2016`
+    with explanatory comment.
+  - `SC2317` in `stop.sh` — flagged the defensive `exit 0` after `main`.
+    The redundancy is the point: `main()` always exits explicitly, but the
+    outer exit guarantees a 0 return even if a future edit lets a code
+    path return-without-exit. The Stop hook must never leak a nonzero exit
+    to CC. Added `shellcheck disable=SC2317` with explanatory comment.
+
+No runtime changes; v0.3.0 worked correctly. This is a pure CI hygiene
+release so future releases ship with a green CI badge.
+
 ## [0.3.0] — 2026-05-28
 
 This is the release in which Bonsai actually starts working end-to-end.

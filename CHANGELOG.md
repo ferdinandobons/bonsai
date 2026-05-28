@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
+
+## [0.4.1] — 2026-05-28
+
 ### Fixed
 - **Open observations with a malformed severity no longer vanish from the
   index.** `bonsai_index_regenerate`'s severity `case` had no default branch, so

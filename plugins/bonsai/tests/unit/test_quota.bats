@@ -31,6 +31,20 @@ teardown() { teardown_sandbox; }
   [ "$h" = "ABSENT" ]
 }
 
+@test "quota: caps_ok false when per-project observations reach the cap" {
+  local i; for i in $(seq 1 20); do bonsai_quota_record_event "observation" "$CLAUDE_PROJECT_DIR"; done
+  run bonsai_quota_caps_ok
+  [ "$status" -ne 0 ]
+}
+
+@test "quota: global_quota override lowers the global cap and blocks across scopes" {
+  echo '{"global_quota":{"runs_per_day":2}}' > "$CLAUDE_PLUGIN_DATA/config.json"
+  bonsai_quota_record_event "run" "/proj-a"
+  bonsai_quota_record_event "run" "/proj-b"
+  run bonsai_quota_caps_ok
+  [ "$status" -ne 0 ]
+}
+
 @test "quota: record_event creates quota.json with one entry" {
   bonsai_quota_record_event "run" "/foo"
   run jq -r '.events | length' "$CLAUDE_PLUGIN_DATA/quota.json"

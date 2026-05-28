@@ -17,7 +17,7 @@ _bonsai_whitelist_init_if_missing() {
   file="$(_bonsai_whitelist_file)"
   [[ -f "$file" ]] && return 0
   bonsai_ensure_dir "$(dirname "$file")" || return 1
-  # Use bonsai_json_write for atomicity (consistent with the rest of the module).
+  # Atomic write.
   bonsai_json_write "$file" '{"__version":1,"tended":[]}'
 }
 
@@ -37,9 +37,9 @@ bonsai_whitelist_add() {
   _bonsai_whitelist_init_if_missing || return 1
   local file
   file="$(_bonsai_whitelist_file)"
-  # NOTE: read-modify-write is not atomic across concurrent processes.
-  # Two simultaneous /bonsai:start calls in the same project could lose one
-  # add. Acceptable for v1 — user-invoked, rare concurrency. See design §9.
+  # Read-modify-write is not atomic across concurrent processes: two simultaneous
+  # /bonsai:start in the same project could lose one add. Tolerated because this
+  # is user-invoked and concurrency is rare.
   local updated
   updated="$(jq --arg p "$path" '
     if (.tended | index($p)) then .
@@ -60,9 +60,8 @@ bonsai_whitelist_remove() {
   local updated
   updated="$(jq --arg p "$path" '.tended -= [$p]' "$file" 2>/dev/null)"
   if [[ -z "$updated" ]]; then
-    # Corrupt JSON: log loudly. /bonsai:stop is user-invoked; the spec's
-    # silent-failure rule applies to background hooks, not to a command the
-    # user just typed asking us to stop watching.
+    # Corrupt JSON: log loudly. The silent-failure rule applies to background
+    # hooks, not to a command the user just typed asking us to stop watching.
     bonsai_log ERROR "whitelist_remove: corrupt projects.json at $file"
     return 1
   fi

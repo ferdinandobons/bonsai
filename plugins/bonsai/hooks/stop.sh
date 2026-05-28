@@ -4,13 +4,12 @@
 # quota). If all gates pass, spawns the gardener subagent via `claude -p` in
 # the background (see lib/dispatch.sh) and exits silently.
 #
-# Spec §9: this hook must NEVER disturb the session. Any error path exits 0
-# with no output, so CC's Stop hook schema validator always accepts our reply.
+# This hook must NEVER disturb the session. Any error path exits 0 with no
+# output, so CC's Stop hook schema validator always accepts our reply.
 
 LIB_DIR="${CLAUDE_PLUGIN_ROOT:-${BASH_SOURCE[0]%/*}/..}/lib"
-# CC exports CLAUDE_PLUGIN_DATA to hook processes per the plugins reference,
-# but provide a defensive fallback for older CC versions or direct invocation
-# (tests, manual debugging) — must match the canonical path used elsewhere.
+# CC exports CLAUDE_PLUGIN_DATA to hook processes, but provide a defensive
+# fallback for direct invocation — must match the canonical path used elsewhere.
 : "${CLAUDE_PLUGIN_DATA:=$HOME/.claude/plugins/data/bonsai-bonsai}"
 export CLAUDE_PLUGIN_DATA
 # shellcheck disable=SC1091

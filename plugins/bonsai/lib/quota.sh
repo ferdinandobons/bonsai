@@ -112,7 +112,7 @@ bonsai_quota_caps_ok() {
     [[ "$v" =~ ^[0-9]+$ ]] && p_obs_cap="$v"
   fi
   # Global caps can be overridden via $CLAUDE_PLUGIN_DATA/config.json
-  # (spec §10: global_quota.runs_per_day / .observations_per_day).
+  # under global_quota.runs_per_day / .observations_per_day.
   local global_cfg="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/config.json"
   if [[ -f "$global_cfg" ]]; then
     local gv
@@ -138,8 +138,8 @@ bonsai_quota_update_last_run() {
   local state; state="$(_bonsai_state_file "$project_dir")"
   bonsai_ensure_dir "$(dirname "$state")" || return 1
   local now; now="$(bonsai_now_iso)"
-  # Use `if`-guarded command so callers with `set -e` / `set -E` (e.g. bats)
-  # don't blow up when jq legitimately fails on a corrupt state.json.
+  # Use `if`-guarded command so callers with `set -e` / `set -E` don't blow up
+  # when jq legitimately fails on a corrupt state.json.
   local updated=""
   if [[ -f "$state" ]]; then
     if ! updated="$(jq --arg t "$now" '.last_run_iso = $t' "$state" 2>/dev/null)"; then

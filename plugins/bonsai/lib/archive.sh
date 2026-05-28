@@ -36,7 +36,7 @@ bonsai_archive_run() {
       trimmed) thr="$trimmed_days" ;;
       *) continue ;;
     esac
-    # Cross-platform mtime: try GNU stat -c first (Linux/CI), then BSD stat -f
+    # Cross-platform mtime: try GNU stat -c first (Linux), then BSD stat -f
     # (macOS). Order matters: on Linux, `stat -f` is a filesystem-info flag
     # that succeeds AND prints multi-line garbage, which would break the
     # arithmetic. Validate that mtime is purely numeric before use.

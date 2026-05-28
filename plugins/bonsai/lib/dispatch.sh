@@ -1,22 +1,14 @@
 #!/usr/bin/env bash
 # Background dispatch of the bonsai:gardener subagent via `claude -p` headless mode.
 #
-# Architecture rationale: CC's Stop hook does not accept
-# `hookSpecificOutput.additionalContext` (only PreToolUse/UserPromptSubmit/
-# PostToolUse/PostToolBatch do), and there is no SubagentDispatch mechanism for
-# hooks to call. The only way for a Stop hook to trigger the gardener is to
-# spawn a fully detached `claude` subprocess that runs the subagent in its own
-# session. See code.claude.com/docs/en/hooks and /en/headless for the protocol.
+# Stop hooks can't return additionalContext and can't call SubagentDispatch,
+# so the only way to trigger the gardener is a fully detached `claude` subprocess.
+# We use `claude -p` (not `claude --bg`) to avoid worktree isolation under
+# .claude/worktrees/, supervisor coupling that complicates teardown, and listing
+# the gardener in `claude agents` UI — it's silent infrastructure.
 #
-# We use `claude -p` (not `claude --bg`) to avoid:
-#   - Worktree isolation under .claude/worktrees/ that `--bg` triggers by default
-#   - Supervisor process coupling that complicates teardown
-#   - Listing the gardener in `claude agents` UI (it's silent infrastructure)
-#
-# Detachment uses `nohup ... & disown` so the child survives:
-#   - The parent shell (the hook) exiting
-#   - The user closing their interactive `claude` session
-#   - SIGHUP propagation through the process tree
+# Detachment uses `nohup ... & disown` so the child survives the hook exiting,
+# the user closing their interactive session, and SIGHUP through the process tree.
 
 [[ -n "${_BONSAI_DISPATCH_SOURCED:-}" ]] && return 0
 _BONSAI_DISPATCH_SOURCED=1

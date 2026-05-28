@@ -21,7 +21,6 @@ bonsai_migrate_check() {
   fi
 }
 
-# At v1: nothing to migrate. Future versions will add per-version functions.
 bonsai_migrate_run_all() {
   local project_dir="$1"
   bonsai_migrate_check "${CLAUDE_PLUGIN_DATA}/projects.json"

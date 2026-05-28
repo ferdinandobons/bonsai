@@ -5,11 +5,11 @@
 [[ -n "${_BONSAI_COMMON_SOURCED:-}" ]] && return 0
 _BONSAI_COMMON_SOURCED=1
 
-# NOTE: we deliberately do NOT enable `set -o pipefail` at module scope.
-# Sourcing this file should not change the caller's shell options. Spec §9
-# requires that bonsai never disturbs the session — pipefail in stop.sh could
-# turn SIGPIPE on a downstream tool into a non-zero hook exit, which Claude
-# Code would surface. Apply pipefail locally inside subshells when needed:
+# We deliberately do NOT enable `set -o pipefail` at module scope: sourcing
+# must not change the caller's shell options. Bonsai must never disturb the
+# session, and pipefail in stop.sh could turn a SIGPIPE on a downstream tool
+# into a non-zero hook exit, which Claude Code would surface. Apply pipefail
+# locally inside subshells when needed:
 #   ( set -o pipefail; cmd1 | cmd2 )
 
 # Current time in ISO-8601 UTC (e.g. "2026-05-27T21:18:00Z").

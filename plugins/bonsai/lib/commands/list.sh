@@ -9,7 +9,8 @@ cwd="${CLAUDE_PROJECT_DIR}"
 
 files=$(bonsai_branches_list_open "$cwd" | tail -n "$n")
 if [ -z "$files" ]; then
-  echo "No open observations. /bonsai:status for status."
+  echo "No open observations yet — Bonsai stays silent most of the time."
+  echo "Run /bonsai:status to check health and quota."
   exit 0
 fi
 

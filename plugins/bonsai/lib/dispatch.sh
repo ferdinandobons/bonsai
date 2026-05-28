@@ -53,6 +53,10 @@ bonsai_dispatch_gardener() {
   # meaningless. The combination of --max-turns and the pre-sliced transcript
   # (see stop.sh transcript_tail_lines) bounds work effectively. Token usage
   # is recorded in the gardener log's .usage field for post-hoc visibility.
+  # shellcheck disable=SC2016
+  # The single-quoted bash -c body is intentional: "$1" must refer to the
+  # positional arg passed to the nested bash subshell ($prompt_input), not
+  # expand at this outer shell. Same for the printf format string "%s".
   nohup bash -c '
     printf "%s" "$1" | claude -p \
       --agent bonsai:gardener \

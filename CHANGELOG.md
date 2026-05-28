@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.1.6] — 2026-05-28
+
+### Fixed
+- **Slash command scripts now run end-to-end**. v0.1.5 fixed the
+  `.md` → script invocation but the scripts themselves still failed
+  on the first `source "${CLAUDE_PLUGIN_ROOT}/lib/..."` line, because
+  Claude Code expands `${CLAUDE_PLUGIN_ROOT}` in the `.md` block-fence
+  (to find the script) without exporting it as an env var to the
+  subprocess. Added `lib/commands/_bootstrap.sh`, sourced as the first
+  line of every command script, which derives `CLAUDE_PLUGIN_ROOT`
+  from the script's own location (`$(dirname BASH_SOURCE)/../..`) and
+  falls back `CLAUDE_PROJECT_DIR` to `$PWD`.
+
 ## [0.1.5] — 2026-05-28
 
 ### Fixed

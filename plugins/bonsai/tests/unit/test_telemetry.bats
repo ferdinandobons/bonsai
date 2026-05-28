@@ -45,6 +45,25 @@ make_log() {
   [ "$output" = "1 0 1 0 0" ]
 }
 
+@test "telemetry: token_usage sums the four buckets over the window" {
+  jq -n '{usage:{input_tokens:10,output_tokens:5,cache_read_input_tokens:100,cache_creation_input_tokens:20}}' > "$LOGS/gardener-20260528T100000Z.log"
+  jq -n '{usage:{input_tokens:1,output_tokens:2,cache_read_input_tokens:3,cache_creation_input_tokens:4}}' > "$LOGS/gardener-20260528T110000Z.log"
+  run bonsai_telemetry_token_usage "$LOGS"
+  [ "$output" = "11 103 24 7" ]   # input cache_read cache_creation output
+}
+
+@test "telemetry: token_usage respects the cutoff" {
+  jq -n '{usage:{input_tokens:999,output_tokens:999,cache_read_input_tokens:999,cache_creation_input_tokens:999}}' > "$LOGS/gardener-20260101T000000Z.log"
+  jq -n '{usage:{input_tokens:1,output_tokens:1,cache_read_input_tokens:1,cache_creation_input_tokens:1}}' > "$LOGS/gardener-20260528T120000Z.log"
+  run bonsai_telemetry_token_usage "$LOGS" "20260528T000000Z"
+  [ "$output" = "1 1 1 1" ]
+}
+
+@test "telemetry: token_usage on a missing dir is all zeros" {
+  run bonsai_telemetry_token_usage "$CLAUDE_PLUGIN_DATA/nope"
+  [ "$output" = "0 0 0 0" ]
+}
+
 @test "telemetry: missing log dir yields all zeros" {
   run bonsai_telemetry_gardener_stats "$CLAUDE_PLUGIN_DATA/nope"
   [ "$status" -eq 0 ]

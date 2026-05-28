@@ -50,3 +50,30 @@ bonsai_telemetry_gardener_stats() {
   fi
   printf '%s %s %s %s %s' "$total" "$completed" "$errored" "$max_turns" "$peak"
 }
+
+# Sum token usage across gardener logs in the window. Prints one line:
+#   "<input> <cache_read> <cache_creation> <output>"
+# Same args/cutoff semantics as bonsai_telemetry_gardener_stats.
+bonsai_telemetry_token_usage() {
+  local log_dir="${1:-${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/logs}"
+  local cutoff="${2:-}"
+  local ti=0 tcr=0 tcw=0 to=0
+  if [[ -d "$log_dir" ]]; then
+    local log fname ts vals i cr cw o
+    shopt -s nullglob
+    for log in "$log_dir/"gardener-*.log; do
+      [[ -f "$log" ]] || continue
+      fname="$(basename "$log")"; ts="${fname#gardener-}"; ts="${ts%.log}"
+      if [[ -n "$cutoff" && "$ts" < "$cutoff" ]]; then continue; fi
+      # One jq pass per log emits the four buckets (0 when absent).
+      vals="$(jq -r '.usage | "\(.input_tokens // 0) \(.cache_read_input_tokens // 0) \(.cache_creation_input_tokens // 0) \(.output_tokens // 0)"' "$log" 2>/dev/null || printf '0 0 0 0')"
+      read -r i cr cw o <<< "$vals"
+      [[ "$i"  =~ ^[0-9]+$ ]] && ti=$((ti + i))
+      [[ "$cr" =~ ^[0-9]+$ ]] && tcr=$((tcr + cr))
+      [[ "$cw" =~ ^[0-9]+$ ]] && tcw=$((tcw + cw))
+      [[ "$o"  =~ ^[0-9]+$ ]] && to=$((to + o))
+    done
+    shopt -u nullglob
+  fi
+  printf '%s %s %s %s' "$ti" "$tcr" "$tcw" "$to"
+}

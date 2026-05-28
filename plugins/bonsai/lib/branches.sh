@@ -108,11 +108,10 @@ bonsai_branches_write() {
   local related; related="$(printf '%s' "$obs_json" | jq -r '.related_branch_ids[]?' 2>/dev/null)"
 
   # Collision-safe atomic write. The LLM-proposed id is advisory: if any branch
-  # already carries that id (any slug), reassign to the next free id for the
-  # day. We then create the file via `ln` (atomic, fails if the exact target
-  # exists) rather than `mv` (which silently clobbers) so a duplicate id can
-  # never overwrite an existing observation. On a lost race we reallocate and
-  # retry, bounded so a pathological loop can't hang the gardener.
+  # already carries it, reassign to the next free id for the day. Create via `ln`
+  # (atomic, fails if target exists) not `mv` (silently clobbers), so a duplicate
+  # id can never overwrite an observation. On a lost race, reallocate and retry,
+  # bounded so a pathological loop can't hang the gardener.
   local file tmp attempt=0
   local max_attempts=50
   while :; do
@@ -150,8 +149,7 @@ bonsai_branches_write() {
       return 1
     fi
 
-    # `ln` is atomic and refuses to overwrite an existing target — this is the
-    # last line of defense against clobbering a same-named file.
+    # `ln` is atomic and refuses to overwrite — last defense against clobbering.
     if ln "$tmp" "$file" 2>/dev/null; then
       rm -f "$tmp"
       # Return the resolved path so callers don't reconstruct the filename.

@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# Background dispatch of the bonsai:gardener subagent via `claude -p` headless mode.
+# Background dispatch of the bonsai:gardener subagent via `claude -p` headless.
 #
-# Stop hooks can't return additionalContext and can't call SubagentDispatch,
-# so the only way to trigger the gardener is a fully detached `claude` subprocess.
-# We use `claude -p` (not `claude --bg`) to avoid worktree isolation under
-# .claude/worktrees/, supervisor coupling that complicates teardown, and listing
-# the gardener in `claude agents` UI — it's silent infrastructure.
-#
-# Detachment uses `nohup ... & disown` so the child survives the hook exiting,
-# the user closing their interactive session, and SIGHUP through the process tree.
+# Stop hooks can't return additionalContext or call SubagentDispatch, so the
+# only trigger is a detached `claude` subprocess. We use `claude -p` (not
+# `--bg`) to avoid worktree isolation, supervisor coupling, and listing the
+# gardener in `claude agents` — it's silent infrastructure. Detachment via
+# `nohup ... & disown` lets the child survive hook/session exit and SIGHUP.
 
 [[ -n "${_BONSAI_DISPATCH_SOURCED:-}" ]] && return 0
 _BONSAI_DISPATCH_SOURCED=1
@@ -49,33 +46,20 @@ bonsai_dispatch_gardener() {
     timeout_cmd="gtimeout 600"
   fi
 
-  # nohup + disown + redirect every stream so the child survives parent exit.
-  # We avoid `setsid` for portability (not on macOS by default).
-  # The pipe from `printf` provides stdin to claude; we redirect the bash -c
-  # subshell's stdout/stderr to the log file so we capture claude's full output.
   # Hard limits:
-  # --max-turns: PRIMARY cap on iterations. The gardener's 8-step workflow
-  #   typically needs 10-15 turns of tool work even with pre-sliced input
-  #   (Read transcript, Bash jq filtering, Bash find, evidence reads, Bash to
-  #   write branch file, Bash to regenerate INDEX). 25 gives meaningful slack
-  #   while still capping pathological loops. This is the ONLY hard cap we use.
-  # --fallback-model: keeps the gardener responsive when the primary model is
-  #   overloaded — graceful degradation, no hard fail.
-  #
-  # We intentionally do NOT set --max-budget-usd. Bonsai's target users run on
-  # Claude subscription plans (Pro/Max/Team/Enterprise) where the gardener
-  # consumes the included Agent SDK credit; USD numbers reported by claude -p
-  # are API-equivalent estimates, not actual deductions. Capping by USD is
-  # meaningless. The combination of --max-turns and the pre-sliced transcript
-  # (see stop.sh transcript_tail_lines) bounds work effectively. Token usage
-  # is recorded in the gardener log's .usage field for post-hoc visibility.
+  # --max-turns 25: PRIMARY cap. The 8-step workflow needs ~10-15 turns even on
+  #   pre-sliced input; 25 gives slack while capping pathological loops.
+  # --fallback-model: graceful degradation when the primary model is overloaded.
+  # No --max-budget-usd: target users are on subscription plans where claude -p's
+  #   USD figures are API-equivalent estimates, not real deductions, so a USD cap
+  #   is meaningless. --max-turns + the pre-sliced transcript bound the work;
+  #   token usage lives in the log's .usage field.
   # shellcheck disable=SC2016
-  # The single-quoted bash -c body is intentional: "$1"/"$2" must refer to the
-  # positional args passed to the nested bash subshell ($prompt_input,
-  # $lock_dir), not expand at this outer shell. Same for the printf format "%s".
-  # Only $timeout_cmd is interpolated by breaking out of the single quotes — it
-  # is a fixed, locally-computed string (empty or "timeout 600"). The EXIT trap
-  # releases the lock no matter how claude ends (normal, error, timeout, kill).
+  # The bash -c body is single-quoted on purpose: "$1"/"$2" must bind to the
+  # nested subshell's args ($prompt_input, $lock_dir), not expand here. Only
+  # $timeout_cmd is interpolated (a fixed local string). The EXIT trap releases
+  # the lock however claude ends (normal, error, timeout, kill). `setsid` is
+  # avoided for portability (absent on macOS).
   nohup bash -c '
     ld="$2"
     cleanup() { [ -n "$ld" ] && rm -rf "$ld" 2>/dev/null; }

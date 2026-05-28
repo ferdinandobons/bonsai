@@ -11,13 +11,11 @@ source "${BASH_SOURCE[0]%/*}/branches.sh"
 
 _bonsai_config_file() { printf '%s/.claude/bonsai/config.json' "$1"; }
 
-# Purge transient plugin-data files older than ttl_days: pre-sliced transcripts
-# (sliced/sliced-*.jsonl) and per-run gardener logs (logs/gardener-*.log). These
-# are written once per gardener run and never read again, so they accumulate
-# unbounded (~400KB per slice → MBs/day at moderate use). The persistent
-# bonsai.log / bonsai-errors.log are deliberately NOT matched and never removed.
-#   $1 - ttl_days (default 7)
-#   $2 - data_dir (default $CLAUDE_PLUGIN_DATA)
+# Purge transient plugin-data older than ttl_days: pre-sliced transcripts
+# (sliced/sliced-*.jsonl) and per-run gardener logs (logs/gardener-*.log).
+# Written once per run, never re-read, so they grow unbounded (MBs/day). The
+# persistent bonsai.log / bonsai-errors.log are deliberately NOT matched.
+#   $1 - ttl_days (default 7)   $2 - data_dir (default $CLAUDE_PLUGIN_DATA)
 bonsai_archive_purge_transient() {
   local ttl_days="${1:-7}"
   local data_dir="${2:-${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}}"
@@ -28,8 +26,7 @@ bonsai_archive_purge_transient() {
   shopt -s nullglob
   for f in "$data_dir/sliced/"sliced-*.jsonl "$data_dir/logs/"gardener-*.log; do
     [[ -f "$f" ]] || continue
-    # Cross-platform mtime: GNU stat -c first, then BSD stat -f. Validate numeric
-    # (Linux `stat -f` is a filesystem flag that prints garbage but succeeds).
+    # Cross-platform mtime (see note in bonsai_archive_run): validate numeric.
     mtime="$(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null || printf 0)"
     [[ "$mtime" =~ ^[0-9]+$ ]] || mtime=0
     age=$(( now - mtime ))

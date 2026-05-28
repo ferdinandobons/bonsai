@@ -74,12 +74,10 @@ main() {
     exit 0
   fi
 
-  # 5b. Concurrency gate — acquire the per-project lock. If another gardener is
-  # already running for this project (a parallel interactive session, or a Stop
-  # hook racing this one), skip silently rather than spawn a second gardener
-  # that would race on quota.json / state.json / branch-id allocation. The lock
-  # is released by the detached gardener subshell when claude exits; a stale
-  # lock (crashed gardener) is reclaimed automatically.
+  # 5b. Concurrency gate. Acquire the per-project lock; if another gardener is
+  # running (parallel session or racing Stop hook), skip rather than spawn a
+  # second one that races on quota.json/state.json/branch-id. The lock is
+  # released by the detached gardener on exit; a stale lock is reclaimed.
   local lock_dir; lock_dir="$(bonsai_lock_path "$cwd")"
   if ! bonsai_lock_acquire "$lock_dir"; then
     bonsai_log INFO "stop: gardener already running for this project, skip"
@@ -115,12 +113,9 @@ main() {
     [[ "$t" =~ ^[0-9]+$ ]] && transcript_tail_lines="$t"
   fi
 
-  # 7b. Pre-slice the transcript: real session transcripts can easily exceed
-  # 1MB / 200k tokens (Sonnet context window), making the gardener spend most
-  # of its turns reading and filtering instead of producing observations.
-  # The hook slices to the last N lines (default 200, configurable via
-  # config.json's transcript_tail_lines) and writes to a temp file. The
-  # gardener receives the small slice and can focus on triage + emission.
+  # 7b. Pre-slice the transcript: real sessions can exceed 1MB / the Sonnet
+  # context window, making the gardener burn turns reading instead of triaging.
+  # Slice to the last N lines (config: transcript_tail_lines, default 200).
   local sliced_transcript=""
   local sliced_dir="$CLAUDE_PLUGIN_DATA/sliced"
   if [[ -n "$transcript_path" && -f "$transcript_path" ]]; then
@@ -181,7 +176,7 @@ main() {
 
 main
 # shellcheck disable=SC2317
-# Belt-and-suspenders: main() always exits explicitly, but if a future edit
-# causes a code path to return rather than exit, this guarantees we still
-# end successfully (the Stop hook must never leak a nonzero exit to CC).
+# Belt-and-suspenders: main() always exits explicitly, but guarantee a success
+# exit if a future edit returns instead — the Stop hook must never leak a
+# nonzero exit to CC.
 exit 0

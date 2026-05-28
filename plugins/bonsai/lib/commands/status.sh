@@ -31,18 +31,11 @@ cfg="$cwd/.claude/bonsai/config.json"
 model="claude-sonnet-4-6"
 [ -f "$cfg" ] && model="$(jq -r '.gardener_model' "$cfg")"
 
-# Sum actual token usage from gardener log files in the last 24h.
-# Each gardener-*.log holds the claude -p result JSON with .usage fields
-# (set by the headless run itself, not estimated).
-#
-# CC's .usage breaks input into four buckets:
-#   - input_tokens:               net new (uncached) prompt tokens
-#   - cache_read_input_tokens:    tokens read from prompt cache (cheaper, but real context)
-#   - cache_creation_input_tokens: tokens written to cache (one-time per cache entry)
-#   - output_tokens:              generation tokens
-# Summing only input + output misses the cache buckets, which dominate
-# subscription-credit consumption (1900x larger in observed gardener runs —
-# see branch 2026-05-28-001).
+# Sum actual token usage from gardener logs (last 24h). claude -p's .usage
+# splits input into four buckets: input_tokens (fresh), cache_read,
+# cache_creation, output. Summing only input+output misses the cache buckets,
+# which dominate subscription-credit consumption (~1900x larger in observed
+# runs — see branch 2026-05-28-001).
 gardener_log_dir="${CLAUDE_PLUGIN_DATA}/logs"
 total_input_tokens=0
 total_output_tokens=0

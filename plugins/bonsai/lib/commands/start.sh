@@ -31,6 +31,8 @@ if [ ! -f "$cfg" ]; then
 EOF
 fi
 
+# Optional overrides on top of the default config just written. Each is a
+# --key=value flag; --throttle accepts an m/h/d suffix (e.g. 10m, 2h, 1d).
 for tok in $args; do
   case "$tok" in
     --throttle=*) v="${tok#*=}"; n="${v%[mhd]}"; u="${v: -1}"; mins="$n"

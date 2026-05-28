@@ -1,5 +1,3 @@
-<img src="assets/logo.svg" width="100" align="right" alt="Bonsai logo" />
-
 # Bonsai
 
 ![Bonsai: from the active approach to the proactive approach](assets/hero.svg)
@@ -14,7 +12,7 @@ It runs silently in the background. It says nothing most of the time. It speaks 
 
 ## The proof
 
-The first time the gardener ran on a real session (the transcript of building Bonsai itself), it caught two real bugs in its own codebase that sixteen human-driven code reviews had already cleared:
+The first time the gardener ran on a real session (the transcript of building Bonsai itself), it caught two real bugs in its own codebase that sixteen rounds of code review during the build had missed:
 
 1. `bonsai_branches_write` was the only non-atomic file write in a codebase that uses atomic patterns everywhere else. The gardener writes its own observations through that function. It surfaced the bug while writing its own report about it.
 2. The CI workflow never triggered on release tags. That is exactly why two earlier releases shipped with a Linux compatibility regression.

@@ -163,4 +163,8 @@ main() {
 }
 
 main
+# shellcheck disable=SC2317
+# Belt-and-suspenders: main() always exits explicitly, but if a future edit
+# causes a code path to return rather than exit, this guarantees we still
+# end successfully (the Stop hook must never leak a nonzero exit to CC).
 exit 0

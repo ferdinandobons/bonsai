@@ -59,11 +59,10 @@ trimmed_anti_patterns: <full contents of trimmed.md>  # observations user reject
 
 | Tool | Permitted use |
 |---|---|
-| `mcp__ccd_session_mgmt__search_session_transcripts` | Read the session transcript since `last_run_iso` |
-| `Bash` | Read-only shell only: `git status`, `git diff --stat HEAD`, `find . -mtime`, `grep`. No writes, no destructive flags. |
-| `Read`, `Grep`, `Glob` | Inspect files in `project_dir` to gather evidence. |
-| `Write` | Write branch files and update state under `<project_dir>/.claude/bonsai/` ONLY. |
-| `mcp__ccd_session__spawn_task` | Create chips for critical and normal observations. |
+| `Read` | Read `transcript_path` to scan the session. Read source files in `project_dir` to gather evidence. NEVER read outside `project_dir`. |
+| `Bash` | Read-only shell only: `git status`, `git diff --stat HEAD`, `find . -mtime`, `grep`, `head`, `tail`, `wc`, `jq` on the transcript. No writes, no destructive flags, no network. |
+| `Grep`, `Glob` | Inspect files in `project_dir` to gather evidence. |
+| `Write` | Write branch files and update state under `<project_dir>/.claude/bonsai/` ONLY. Any other Write call is a policy violation. |
 
 Do not call any tool that modifies user source code. Do not call network tools.
 
@@ -75,20 +74,37 @@ Do not call any tool that modifies user source code. Do not call network tools.
 
 Before reading anything, decide which lens to apply. This is a fast, low-token step.
 
-1. Search the session transcript for tool calls since `last_run_iso`, grouped by tool name.
-2. Extract files touched by Write/Edit/Create tool calls from the transcript.
-3. List files in `project_dir` with mtime newer than `last_run_iso`:
+1. Read the session transcript from `transcript_path` (a JSONL file passed to you
+   in the input). Use the `Read` tool directly on it:
+   ```
+   Read tool with file_path = <transcript_path>, limit = 1000
+   ```
+   If the transcript is very long, also focus on the most recent turns:
+   ```bash
+   wc -l "<transcript_path>"
+   tail -n 500 "<transcript_path>"
+   ```
+2. Parse the transcript lines as JSONL. Each line is a session event. Filter
+   for events with `.type == "tool_use"` since `last_run_iso`, group by tool
+   name. Use `Bash` with `jq`:
+   ```bash
+   jq -c 'select(.type == "tool_use" and .timestamp > "<last_run_iso>")' \
+     "<transcript_path>" 2>/dev/null
+   ```
+3. Extract files touched by Write/Edit/Create tool calls from those events
+   (`.input.file_path`).
+4. List files in `project_dir` with mtime newer than `last_run_iso`:
    ```bash
    find "<project_dir>" -not -path "*/.git/*" -not -path "*/.claude/bonsai/*" \
      -newer "<state_json_path_as_timestamp_reference>" -type f 2>/dev/null | head -30
    ```
-4. `touched_files` = union of transcript-touched + mtime-changed files.
-5. `retry_signal` = maximum count of any (tool_name, normalized_args) pair appearing
+5. `touched_files` = union of transcript-touched + mtime-changed files.
+6. `retry_signal` = maximum count of any (tool_name, normalized_args) pair appearing
    more than twice in the transcript.
-6. `conv_shape` = ratio of message characters to tool call count.
+7. `conv_shape` = ratio of message characters to tool call count.
    - High (> 200 chars/call) → deep-talk session.
    - Low (≤ 200 chars/call) → hands-on coding session.
-7. If `.git/` exists, optionally enrich with:
+8. If `.git/` exists, optionally enrich with:
    ```bash
    git -C "<project_dir>" diff --stat HEAD 2>/dev/null | tail -5
    ```
@@ -163,9 +179,9 @@ Assign severity to each surviving observation:
 
 | Severity | Criteria | Output |
 |---|---|---|
-| **critical** | Bug with concrete reproduction evidence; security risk with a triggerable path; data-loss risk. | Push notif + chip + branch file |
-| **normal** | Concrete optimization, refactor recommendation, strategic decision needing attention, confirmed workflow inefficiency. | Chip + branch file |
-| **low** | Nice-to-have, exploratory idea, weak signal, no concrete evidence. | Branch file only |
+| **critical** | Bug with concrete reproduction evidence; security risk with a triggerable path; data-loss risk. | Branch file + top-of-INDEX placement |
+| **normal** | Concrete optimization, refactor recommendation, strategic decision needing attention, confirmed workflow inefficiency. | Branch file in INDEX |
+| **low** | Nice-to-have, exploratory idea, weak signal, no concrete evidence. | Branch file only (collapsed in INDEX) |
 
 When in doubt, downgrade severity. A normal observation labelled low is fine.
 A low observation labelled critical erodes trust permanently.
@@ -187,13 +203,13 @@ For each observation to emit, construct the observation JSON:
   "evidence_ref": "<file:line or 'transcript' or 'git diff'>",
   "evidence_detail": "<exact quote or description of the evidence>",
   "suggested_action": "<one concrete action the user could take>",
-  "action_brief": "<3–5 paragraphs, fully self-contained: file paths, evidence, concrete approach. A fresh cold session opened from the chip must be able to act without parent context.>",
+  "action_brief": "<3–5 paragraphs, fully self-contained: file paths, evidence, concrete approach. A fresh cold session opened from the branch must be able to act without parent context.>",
   "related_branch_ids": [],
   "dedup_hash": "<sha256 computed in Step 4>"
 }
 ```
 
-Then call the lib helpers by running:
+Then call the lib helpers via Bash:
 
 ```bash
 bash -c '
@@ -216,44 +232,15 @@ bash -c '
 '
 ```
 
-For **critical** observations, also create a chip via `mcp__ccd_session__spawn_task`:
+The branch file is the user interface. INDEX.md (auto-regenerated) is the user's
+entry point — they read it (or run `/bonsai:list`) to see what you've surfaced.
 
-```
-title:  "Bonsai · [TECH · CRIT] <title>"   (< 60 chars total)
-tldr:   "<tldr — 1–2 sentences, plain English, no file paths>"
-prompt: <observation.action_brief>
-```
-
-For **normal** observations, create a chip without the `CRIT` tag:
-
-```
-title:  "Bonsai · [TECH] <title>"
-tldr:   "<tldr>"
-prompt: <observation.action_brief>
-```
-
-Do NOT create chips for **low** severity observations. Low observations receive a
-branch file only.
-
-For **critical** observations only, ALSO send a push notification (rate-limited
-to ≤5 per project per hour by `bonsai_push_rate_ok`):
-
-```bash
-bash -c '
-  source "$CLAUDE_PLUGIN_ROOT/lib/push.sh"
-  source "$CLAUDE_PLUGIN_ROOT/lib/quota.sh"
-  if bonsai_push_rate_ok "<project_dir>"; then
-    bonsai_push_format "<obs_json>"
-    bonsai_quota_record_event "push" "<project_dir>"
-  fi
-'
-```
-
-If the bash block printed a JSON `{title, body}` (rate-limit allowed it), call
-the `PushNotification` tool with those two fields. If the bash block printed
-nothing, the rate limit was hit — skip the push silently.
-
-Do NOT push for normal or low. Push is for "wake the user up" only.
+**v0.3.0 note:** Chips (`mcp__ccd_session__spawn_task`) and push notifications
+(`PushNotification`) are not available in this release. The severity field
+still matters because it controls how prominently the observation surfaces in
+`INDEX.md` and how `/bonsai:list` orders entries, but no out-of-band
+notification is emitted. Both may be reintroduced in a future version once
+their underlying mechanisms stabilize across CC environments.
 
 ---
 
@@ -303,12 +290,10 @@ Given transcript evidence of a race condition in `src/cache.ts` at line 42:
 }
 ```
 
-Chip call for this observation:
-```
-title:  "Bonsai · [TECH · CRIT] Race condition in updateCache"
-tldr:   "Two concurrent calls to updateCache() can silently drop writes."
-prompt: <action_brief above>
-```
+The branch file written to `.claude/bonsai/branches/2026-05-27-001-race-in-updatecache.md`
+is the user-facing artifact. `INDEX.md` will list it at the top because of its
+`critical` severity. The user reads it via `/bonsai:list` or by opening
+`.claude/bonsai/INDEX.md` directly in their editor.
 
 ---
 

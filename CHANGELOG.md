@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
+
+## [0.5.0] — 2026-05-28
+
 ### Added
 - **Adaptive throttle (Stage 0 of the "smarter gardener" work).** `stop.sh` now
   derives a cheap signal of whether the working tree changed since the last run

@@ -69,18 +69,35 @@ That is the entire setup. Bonsai now watches this project silently. The minimum 
 
 ## Commands
 
+**Watch**
+
 | Command | Action |
 |---|---|
-| `/bonsai:start` | Start watching this project |
+| `/bonsai:start` | Start watching this project. Accepts `--throttle=Xm`, `--lenses=a,b,c`, `--model=name`. |
 | `/bonsai:stop` | Stop watching (history preserved) |
-| `/bonsai:status` | Status, quota, cost |
-| `/bonsai:list` | Read recent observations |
+| `/bonsai:mute <30m\|1h\|4h\|1d>` | Silence temporarily. Append `--global` for all projects. |
+| `/bonsai:unmute` | Resume after a mute. Append `--global` to also clear a global mute. |
+
+**Read**
+
+| Command | Action |
+|---|---|
+| `/bonsai:status` | Health, quota, cost |
+| `/bonsai:list [N=5]` | Read the N most recent open observations |
 | `/bonsai:discuss <id>` | Talk through an observation in this session |
-| `/bonsai:dismiss <id> [reason]` | Mark as not useful. Bonsai learns from this. |
-| `/bonsai:done <id>` | Mark as resolved |
-| `/bonsai:mute <duration>` | Silence temporarily (`30m`, `1h`, `4h`, `1d`). Append `--global` for all projects. |
-| `/bonsai:unmute` | Resume after sleep |
-| `/bonsai:config <key> <value>` | Edit per-project settings |
+
+**Triage**
+
+| Command | Action |
+|---|---|
+| `/bonsai:done <id>` | Mark as resolved / accepted |
+| `/bonsai:dismiss <id> [reason]` | Mark as not useful. The gardener learns. |
+
+**Config**
+
+| Command | Action |
+|---|---|
+| `/bonsai:config [key value]` | View current config, or set one key |
 | `/bonsai:help` | Full command reference |
 
 ## How it works
@@ -139,4 +156,4 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report vulnerabil
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.1.4](https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.4).
+See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.2.2](https://github.com/ferdinandobons/bonsai/releases/tag/v0.2.2).

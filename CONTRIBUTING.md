@@ -25,7 +25,6 @@ All green? Make your change, write a test, repeat. Open a PR against `main`.
 ```
 bonsai/                                  # repo root = marketplace root
 ├── .claude-plugin/marketplace.json      # marketplace descriptor
-├── install.sh, uninstall.sh             # convenience installers
 ├── README.md, CHANGELOG.md, SECURITY.md, LICENSE
 ├── .github/workflows/ci.yml             # shellcheck + bats + JSON validation
 └── plugins/bonsai/

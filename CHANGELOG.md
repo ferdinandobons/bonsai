@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.2.2] — 2026-05-28
+
+### Removed
+- **`install.sh` and `uninstall.sh`** convenience scripts. The native
+  Claude Code install path (`/plugin marketplace add ferdinandobons/bonsai`
+  + `/plugin install bonsai@bonsai`) is now the single supported method.
+
+### Why
+The bash scripts only edited `~/.claude/settings.json` declarations —
+the actual marketplace clone, cache population, and plugin validation
+were always deferred to Claude Code's next startup. The native commands
+do the same `settings.json` mutation **plus** clone, cache, validate,
+and surface errors synchronously. They also keep `known_marketplaces.json`,
+`installed_plugins.json`, and per-plugin install manifests in sync —
+state the bash scripts ignored entirely.
+
+Maintaining two install paths created a mismatch risk: installing via
+script then uninstalling via `/plugin uninstall` (or vice versa) left
+leftover cache or settings entries. Collapsing to a single path removes
+that class of bug.
+
+### Migration
+- Users on `0.2.1` or earlier installed via the bash script: no action
+  required. The existing `settings.json` entry remains valid and Claude
+  Code continues to load the plugin. To uninstall going forward, use
+  `/plugin uninstall bonsai@bonsai` + `/plugin marketplace remove bonsai`
+  instead of the (now-removed) `uninstall.sh`.
+- Anyone with bookmarked `curl | bash` install one-liners: they will 404.
+  Replace with the two-line `/plugin` install shown in the README.
+
 ## [0.2.1] — 2026-05-28
 
 ### Changed

@@ -29,17 +29,7 @@ Bonsai closes the gap between the moment something matters and the moment you no
 
 ## Install
 
-Three paths. Same end state.
-
-### A. One command
-
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/ferdinandobons/bonsai/main/install.sh)
-```
-
-Edits `~/.claude/settings.json` atomically with a timestamped backup, registers the marketplace, enables the plugin. Safe to re-run. Requires `jq`.
-
-### B. Inside Claude Code
+Inside Claude Code:
 
 ```
 /plugin marketplace add ferdinandobons/bonsai
@@ -48,9 +38,8 @@ Edits `~/.claude/settings.json` atomically with a timestamped backup, registers 
 
 Downloaded and enabled immediately. No restart needed.
 
-### C. Manual edit
-
-Add to `~/.claude/settings.json`:
+<details>
+<summary>Or: edit <code>~/.claude/settings.json</code> manually</summary>
 
 ```json
 {
@@ -66,6 +55,8 @@ Add to `~/.claude/settings.json`:
 ```
 
 Restart Claude Code or run `/plugin` to reload.
+
+</details>
 
 ## Activate on a project
 
@@ -107,11 +98,14 @@ Observations live as readable markdown files inside each project. Commit them to
 
 ## Uninstall
 
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/ferdinandobons/bonsai/main/uninstall.sh)
+Inside Claude Code:
+
+```
+/plugin uninstall bonsai@bonsai
+/plugin marketplace remove bonsai
 ```
 
-Removes the marketplace and plugin entry from settings. Your per-project observation logs (`.claude/bonsai/` inside each project) are preserved. Delete them by hand if you want a clean slate.
+This removes the marketplace clone, cache, and settings entries. Your per-project observation logs (`.claude/bonsai/` inside each project) are preserved — delete them by hand if you want a clean slate.
 
 ## Privacy
 

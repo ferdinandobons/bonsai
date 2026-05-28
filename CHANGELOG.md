@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
+
+## [0.4.0] — 2026-05-28
+
 ### Fixed
 - **Branch id collisions can no longer overwrite observations.** Id assignment
   was delegated to the LLM gardener (`gardener.md` proposed `YYYY-MM-DD-NNN`),

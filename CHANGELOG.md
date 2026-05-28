@@ -9,6 +9,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.5.1] — 2026-05-29
+
+Full audit & cleanup pass (multi-agent review across correctness, security, dead
+code, quality, performance, docs, tests). No new features — fixes, hardening, and
+cleanup only. Suite 146 → 165 tests, all green; net −198 lines.
+
+### Fixed
+- **lock.sh**: a held lock whose epoch write hadn't landed was treated as age-0
+  (ancient) and reclaimed, allowing a second gardener to spawn. Missing/unreadable
+  epoch now defaults to "now" (fresh).
+- **/bonsai:list**: a non-numeric `N` argument aborted the command mid-pipeline
+  under `set -e`; it is now validated.
+- **/bonsai:config**: setting a numeric key to a non-numeric (or negative) value
+  was silently written and reported "OK" while every consumer ignored it; values
+  are now type-checked per key and rejected with a clear error.
+
+### Security
+- **commands/*.md**: argument placeholders are now quoted (`"$id"`, etc.), so shell
+  metacharacters in a command argument are treated as data — mitigates Claude
+  Code's textual argument interpolation (upstream issue #16163).
+- **gardener.md**: the judge pass scratch dir moved from world-writable
+  `/tmp/bonsai-judge-*` to `$CLAUDE_PLUGIN_DATA/judge/<session_id>` (private,
+  under `$HOME`), so a co-located user can't pre-create or symlink it.
+
+### Removed
+- Dead code: `lib/push.sh` and `lib/chip.sh` (push/chips removed back in v0.3.0),
+  the unused `bonsai_branches_allocate_id`, `bonsai_signal_diff_stat`, and
+  `bonsai_whitelist_list` functions, and the inert `push_notifications_*` config
+  keys. `lib/` 16 → 14 files.
+
+### Changed
+- **Internal consolidation (behavior-preserving):** shared helpers promoted into
+  `common.sh` (`bonsai_state_file`, `bonsai_config_file`, `bonsai_sha256`,
+  `bonsai_file_mtime_epoch`, `bonsai_now_basic`) replacing duplicated private defs
+  and inline literals; `status.sh`'s token scan folded into a new
+  `bonsai_telemetry_token_usage` (one log scan instead of two); `mute.sh`'s
+  project/global pairs deduped behind shared file-level primitives.
+- **Test integrity:** fixed two silently-non-asserting tests (an intermediate
+  `[[ ]]` and a vacuous `if`); added coverage for `migrate`, the quota caps
+  (observation + global), and `/bonsai:start` side effects.
+- **Docs:** SECURITY.md, README, CONTRIBUTING, start.md, and gardener.md aligned
+  with actual v0.5.x behavior (removed stale MCP/push/chip/`disable-model-invocation`
+  claims; corrected the gardener's wall-time budget and the adaptive-throttle
+  interval).
+
+### Deferred (documented, not applied)
+- Hot-path micro-optimizations (batching repeated `jq`/`git` calls in the
+  Stop-hook gate chain): low impact on a throttle-gated path and the clean fixes
+  would risk the diff-hash semantics / JSON-malformed guard — not worth the
+  regression risk.
+
 ## [0.5.0] — 2026-05-28
 
 ### Added

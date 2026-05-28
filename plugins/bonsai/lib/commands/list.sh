@@ -5,6 +5,9 @@ source "${CLAUDE_PLUGIN_ROOT}/lib/common.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/branches.sh"
 
 n="${1:-5}"
+# Validate before it reaches `tail -n` — a non-numeric arg would otherwise abort
+# the command mid-pipeline under `set -e` with a raw tool error.
+[[ "$n" =~ ^[0-9]+$ ]] || n=5
 cwd="${CLAUDE_PROJECT_DIR}"
 
 files=$(bonsai_branches_list_open "$cwd" | tail -n "$n")

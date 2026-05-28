@@ -34,6 +34,14 @@ case "$key" in
     exit 0 ;;
 esac
 
+# Type-check the value per key. Every key except gardener_model is a
+# non-negative integer; reject a mismatch instead of writing a value every
+# numeric consumer would silently ignore while we report "OK".
+if [ "$key" != "gardener_model" ] && ! [[ "$value" =~ ^[0-9]+$ ]]; then
+  echo "ERR: $key must be a non-negative integer, got: $value"
+  exit 0
+fi
+
 if ! jq empty "$cfg" 2>/dev/null; then
   echo "ERR: config.json is currently corrupt. Fix it by hand or delete it and re-run /bonsai:start."
   exit 0
@@ -42,12 +50,10 @@ fi
 tmp=$(mktemp)
 # `|| true`: a jq failure (e.g. config is valid JSON but not an object) must not
 # abort under `set -e` — the integrity check below turns it into a clean error.
-if [[ "$value" =~ ^-?[0-9]+$ ]]; then
-  jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null || true
-elif [[ "$value" =~ ^(true|false)$ ]]; then
-  jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null || true
-else
+if [ "$key" = "gardener_model" ]; then
   jq --arg k "$key" --arg v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null || true
+else
+  jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null || true
 fi
 
 if [ ! -s "$tmp" ] || ! jq empty "$tmp" 2>/dev/null; then

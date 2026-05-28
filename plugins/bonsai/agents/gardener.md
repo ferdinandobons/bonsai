@@ -213,12 +213,13 @@ observation text is LLM-generated and will contain quotes/apostrophes/braces;
 splicing it into a `bash -c '...'` string would break quoting or allow shell
 injection. Write the inputs with the Write tool, then have Bash read the paths.
 
-Use a **per-session scratch dir** so two gardeners (different projects) can't
-clobber each other's files: `mkdir -p /tmp/bonsai-judge-<session_id>` and put the
-files below under it (substitute the `session_id` from your input). The paths
-shown below already use this prefix.
+Use a **per-session scratch dir under the plugin's private data dir** (not
+world-writable `/tmp`) so two gardeners for different projects can't clobber each
+other's files, and a co-located user can't pre-create or symlink the path:
+`mkdir -p "$CLAUDE_PLUGIN_DATA/judge/<session_id>"` (substitute the `session_id`
+from your input). The paths below already use this prefix.
 
-1. Collect the **open** observations into `/tmp/bonsai-judge-<session_id>/existing.json`. Run:
+1. Collect the **open** observations into `$CLAUDE_PLUGIN_DATA/judge/<session_id>/existing.json`. Run:
    ```bash
    bash -c '
      out=""; first=1
@@ -231,29 +232,29 @@ shown below already use this prefix.
        entry="$(jq -n --arg id "$id" --arg t "$title" "{id:\$id,title:\$t}")"
        [ $first -eq 0 ] && out="$out,"; first=0; out="$out$entry"
      done
-     printf "[%s]" "$out" > /tmp/bonsai-judge-<session_id>/existing.json
+     printf "[%s]" "$out" > $CLAUDE_PLUGIN_DATA/judge/<session_id>/existing.json
    '
    ```
 2. Using the **Write tool** (not shell), write your candidates array to
-   `/tmp/bonsai-judge-<session_id>/candidates.json` as `[{"title":..,"tldr":..}, ...]`, in the
+   `$CLAUDE_PLUGIN_DATA/judge/<session_id>/candidates.json` as `[{"title":..,"tldr":..}, ...]`, in the
    SAME order as your emission set (the judge refers to them by `candidate_index`),
-   and write `trimmed_anti_patterns` verbatim to `/tmp/bonsai-judge-<session_id>/anti.txt`.
+   and write `trimmed_anti_patterns` verbatim to `$CLAUDE_PLUGIN_DATA/judge/<session_id>/anti.txt`.
 3. Build the prompt from the files and call Haiku (cheap, single turn). The paths
    are fixed literals, so there is no injection surface:
    ```bash
    bash -c '
      source "$CLAUDE_PLUGIN_ROOT/lib/judge.sh"
      prompt="$(bonsai_judge_build_prompt \
-       "$(cat /tmp/bonsai-judge-<session_id>/candidates.json)" \
-       "$(cat /tmp/bonsai-judge-<session_id>/existing.json)" \
-       "$(cat /tmp/bonsai-judge-<session_id>/anti.txt 2>/dev/null)")"
+       "$(cat $CLAUDE_PLUGIN_DATA/judge/<session_id>/candidates.json)" \
+       "$(cat $CLAUDE_PLUGIN_DATA/judge/<session_id>/existing.json)" \
+       "$(cat $CLAUDE_PLUGIN_DATA/judge/<session_id>/anti.txt 2>/dev/null)")"
      printf "%s" "$prompt" | claude -p --model haiku --max-turns 1 --output-format json \
-       | jq -r ".result // empty" > /tmp/bonsai-judge-<session_id>/result.txt
+       | jq -r ".result // empty" > $CLAUDE_PLUGIN_DATA/judge/<session_id>/result.txt
    '
    ```
 4. Parse the verdicts from the result file (fixed path, no inline data):
    ```bash
-   bash -c 'source "$CLAUDE_PLUGIN_ROOT/lib/judge.sh"; bonsai_judge_parse "$(cat /tmp/bonsai-judge-<session_id>/result.txt)"'
+   bash -c 'source "$CLAUDE_PLUGIN_ROOT/lib/judge.sh"; bonsai_judge_parse "$(cat $CLAUDE_PLUGIN_DATA/judge/<session_id>/result.txt)"'
    ```
    Each line is `<candidate_index> <keep> <severity>`.
 5. **Fail open.** If the Haiku call errors or `bonsai_judge_parse` returns

@@ -46,10 +46,13 @@ bonsai_lock_acquire() {
     return 0
   fi
 
-  # Lock exists — reclaim only if stale.
-  local created; created="$(cat "$lock_dir/epoch" 2>/dev/null || printf '0')"
-  [[ "$created" =~ ^[0-9]+$ ]] || created=0
+  # Lock exists — reclaim only if stale. If the epoch is missing/unreadable (the
+  # holder's epoch write may not have landed yet), treat the lock as just-created
+  # rather than ancient — otherwise a contender would reclaim a fresh lock and a
+  # second gardener would spawn.
   local now; now="$(date -u +%s)"
+  local created; created="$(cat "$lock_dir/epoch" 2>/dev/null || printf '')"
+  [[ "$created" =~ ^[0-9]+$ ]] || created="$now"
   if (( now - created >= stale_secs )); then
     bonsai_log WARN "lock_acquire: reclaiming stale lock $lock_dir (age $((now - created))s)"
     rm -rf "$lock_dir" 2>/dev/null

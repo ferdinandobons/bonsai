@@ -9,7 +9,7 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/config.sh:*)"]
 The user has invoked `/bonsai:config $key $value` in the current project.
 
 ```!
-CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/config.sh" $key $value
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/config.sh" "$key" "$value"
 ```
 
 Print the helper output verbatim.

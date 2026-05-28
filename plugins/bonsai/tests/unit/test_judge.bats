@@ -50,5 +50,5 @@ teardown() { teardown_sandbox; }
   # fail-clean (nonzero → gardener fails open), never a corrupted verdict line.
   local r='Note {x}: {"verdicts":[{"candidate_index":0,"keep":true,"severity":"low","duplicate_of":null,"reason":"ok"}]}'
   run bonsai_judge_parse "$r"
-  if [ "$status" -eq 0 ]; then [ "$output" = "0 true low" ]; fi
+  if [ "$status" -eq 0 ]; then [ "$output" = "0 true low" ]; else [ -z "$output" ]; fi
 }

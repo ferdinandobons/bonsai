@@ -9,7 +9,7 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/list.sh:*)"]
 The user has invoked `/bonsai:list $n` in the current project.
 
 ```!
-CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/list.sh" $n
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/list.sh" "$n"
 ```
 
 Print the output verbatim. Do not interpret.

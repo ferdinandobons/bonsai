@@ -13,7 +13,7 @@ You are now discussing a Bonsai observation in this session.
 The observation file content follows:
 
 ```!
-CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/discuss.sh" $id
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/discuss.sh" "$id"
 ```
 
 Help the user think through this. Do not jump to a solution — first surface

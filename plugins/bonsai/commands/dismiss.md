@@ -9,7 +9,7 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/dismiss.sh:*)"]
 The user has invoked `/bonsai:dismiss $id $reason` in the current project.
 
 ```!
-CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/dismiss.sh" $id $reason
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/dismiss.sh" "$id" "$reason"
 ```
 
 Tell the user:

@@ -37,6 +37,20 @@ run_config() { bash "$BONSAI_PLUGIN_ROOT/lib/commands/config.sh" "$@"; }
   [ "$(jq -r '.throttle_min_minutes' "$cfg")" = "5" ]
 }
 
+@test "config: a non-numeric value for a numeric key is rejected, config untouched" {
+  run run_config throttle_min_minutes fast
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -qi "integer"
+  [ "$(jq -r '.throttle_min_minutes' "$cfg")" = "5" ]
+}
+
+@test "config: a negative value for a numeric key is rejected" {
+  run run_config throttle_min_minutes -5
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -qi "integer"
+  [ "$(jq -r '.throttle_min_minutes' "$cfg")" = "5" ]
+}
+
 @test "config: corrupt config reports an error and exits 0" {
   echo 'not json' > "$cfg"
   run run_config throttle_min_minutes 5

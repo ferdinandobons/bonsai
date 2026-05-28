@@ -4,7 +4,7 @@
 
 **Claude answers when you ask. Bonsai notices when you don't.**
 
-When you ask, you only catch what you remember to look for.
+When you ask, you mostly catch what you remember to look for.
 
 Bonsai is a Claude Code plugin that adds the missing half of the loop. After each turn of your session, a patient observer reads what just happened and emits a tiny, high-signal observation when (and only when) one is worth your time. A latent bug you missed. An architectural decision you made without noticing. A workflow pattern quietly costing you an hour a day.
 

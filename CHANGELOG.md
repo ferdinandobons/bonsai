@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.2.1] — 2026-05-28
+
+### Changed
+- **`/bonsai:help` reorganized** into four functional groups
+  (Watch / Read / Triage / Config) and now surfaces real argument syntax
+  inline (`<id>`, `[N=5]`, `<30m|1h|4h|1d>`, `[--global]`, plus
+  `/bonsai:start` flags), so users can discover usage from the help
+  screen without consulting the README.
+- **`/bonsai:list` empty-state message** improved: instead of the
+  duplicate-worded "No open observations. /bonsai:status for status.",
+  the empty state now explains the silent-by-default behavior and
+  redirects to `/bonsai:status` for health and quota.
+
 ## [0.2.0] — 2026-05-28
 
 ### Changed

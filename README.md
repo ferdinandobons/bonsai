@@ -4,11 +4,11 @@
 
 ![Bonsai: from the active approach to the proactive approach](assets/hero.svg)
 
-**Every other AI coding assistant waits for you to ask. Bonsai watches while you work.**
+**Claude answers when you ask. Bonsai notices when you don't.**
 
 When you ask, you only catch what you remember to look for. By 11pm, that is almost nothing.
 
-Bonsai inverts the loop. After each turn of Claude Code, a patient observer reads what just happened in your session and emits a tiny, high-signal observation when (and only when) one is worth your time. A latent bug you missed. An architectural decision you made without noticing. A workflow pattern quietly costing you an hour a day.
+Bonsai is a Claude Code plugin that adds the missing half of the loop. After each turn of your session, a patient observer reads what just happened and emits a tiny, high-signal observation when (and only when) one is worth your time. A latent bug you missed. An architectural decision you made without noticing. A workflow pattern quietly costing you an hour a day.
 
 It runs silently in the background. It says nothing most of the time. It speaks only when the signal is high. **Silence beats noise** is its hard rule.
 
@@ -25,7 +25,7 @@ This is what proactive looks like.
 
 ## Why you want it
 
-Your assistant is reactive by design. It answers your question, then waits. The cost of that wait is invisible until you ship: the race condition you would have caught on Monday morning ships on Friday night. The architecture decision you made in a 3am haze becomes a six-month refactor. The small repetition in your workflow becomes a daily tax.
+Claude is reactive by design. You ask, Claude answers, then Claude waits. The cost of that wait is invisible until you ship: the race condition you would have caught on Monday morning ships on Friday night. The architecture decision you made in a 3am haze becomes a six-month refactor. The small repetition in your workflow becomes a daily tax.
 
 Bonsai closes the gap between the moment something matters and the moment you notice. You stop relying on remembering to ask. The observer remembers for you.
 

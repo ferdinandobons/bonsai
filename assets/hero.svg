@@ -22,7 +22,7 @@
 
     <!-- Label -->
     <text x="20" y="34" font-family="Helvetica, sans-serif" font-size="13" fill="#8b6f47" font-weight="700" letter-spacing="2.5">ACTIVE APPROACH</text>
-    <text x="20" y="52" font-family="Helvetica, sans-serif" font-size="11" fill="#a89887" font-style="italic">how every other coding assistant works</text>
+    <text x="20" y="52" font-family="Helvetica, sans-serif" font-size="11" fill="#a89887" font-style="italic">you ask. Claude answers. you ask again.</text>
 
     <!-- Icon: cluster of speech bubbles with question marks -->
     <g transform="translate(190, 130)" opacity="0.8">
@@ -39,9 +39,9 @@
 
     <!-- Description bullets -->
     <g font-family="Helvetica, sans-serif" font-size="13" fill="#5d4e3c">
-      <text x="20" y="225">You ask. The assistant answers.</text>
-      <text x="20" y="248">You ask again. And again.</text>
-      <text x="20" y="282" fill="#8b6f47" font-style="italic">It only catches what you remember to look for.</text>
+      <text x="20" y="225">You drive every interaction.</text>
+      <text x="20" y="248">Claude responds only to your prompts.</text>
+      <text x="20" y="282" fill="#8b6f47" font-style="italic">It catches only what you remember to look for.</text>
     </g>
   </g>
 
@@ -59,7 +59,7 @@
 
     <!-- Label -->
     <text x="20" y="34" font-family="Helvetica, sans-serif" font-size="13" fill="#4a7c3a" font-weight="700" letter-spacing="2.5">PROACTIVE APPROACH</text>
-    <text x="20" y="52" font-family="Helvetica, sans-serif" font-size="11" fill="#6b8b5a" font-style="italic">how Bonsai works</text>
+    <text x="20" y="52" font-family="Helvetica, sans-serif" font-size="11" fill="#6b8b5a" font-style="italic">Bonsai watches between the asks</text>
 
     <!-- Bonsai illustration centered in the icon area -->
     <g transform="translate(190, 165)">
@@ -96,7 +96,7 @@
 
     <!-- Description bullets -->
     <g font-family="Helvetica, sans-serif" font-size="13" fill="#3d5c2e">
-      <text x="20" y="225">It watches your whole session in silence.</text>
+      <text x="20" y="225">A plugin that watches your whole session.</text>
       <text x="20" y="248">Surfaces only what matters. Stays quiet otherwise.</text>
       <text x="20" y="282" fill="#4a7c3a" font-style="italic">It catches what you would have missed.</text>
     </g>

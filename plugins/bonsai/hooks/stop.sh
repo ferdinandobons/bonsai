@@ -152,6 +152,14 @@ main() {
     sliced_transcript="$transcript_path"
   fi
 
+  # 7c. Structured git diff as primary detection context (bounded so we never
+  # blow the prompt). Empty for non-git dirs — the gardener falls back to the
+  # transcript.
+  local git_diff=""
+  if git -C "$cwd" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git_diff="$(git -C "$cwd" diff HEAD 2>/dev/null | head -c 60000)"
+  fi
+
   local prompt_input
   prompt_input="$(jq -n \
     --arg cwd "$cwd" \
@@ -164,6 +172,7 @@ main() {
     --argjson hashes "$hashes" \
     --argjson lenses "$lenses" \
     --arg trimmed "$trimmed_content" \
+    --arg git_diff "$git_diff" \
     '{
       "project_dir": $cwd,
       "session_id": $sid,
@@ -174,7 +183,8 @@ main() {
       "gardener_model": $model,
       "lenses_enabled": $lenses,
       "recent_dedup_hashes": $hashes,
-      "trimmed_anti_patterns": $trimmed
+      "trimmed_anti_patterns": $trimmed,
+      "git_diff": $git_diff
     }')"
 
   # 8. Spawn the gardener in the background. Log goes to plugin-data so the

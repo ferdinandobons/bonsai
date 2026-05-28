@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   strategic/workflow observations are still sampled, never dropped — this cuts
   the ~350k-token cost of running on substance-free turns without going
   code-only. `bonsai_quota_throttle_ok` gained an optional override arg.
+- **Git diff as the gardener's primary detection context (Stage 1).** The Stop
+  hook now passes the project's `git diff HEAD` (bounded to ~60KB) to the
+  gardener as a `git_diff` field, and `gardener.md` instructs it to triage from
+  the actual changes first and use the transcript for intent / strategic /
+  workflow signals. Previously the gardener saw only the transcript tail.
 
 ### Fixed
 - **The gardener was always told `last_run_iso = now`.** `stop.sh` read

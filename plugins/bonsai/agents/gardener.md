@@ -42,6 +42,8 @@ You receive the following fields in your prompt:
 
 ```yaml
 project_dir: <absolute path to the project>
+git_diff: <`git diff HEAD` for this project, bounded to ~60KB — PRIMARY lens for
+           code-level observations; empty if the project is not a git repo>
 transcript_path: <path to a PRE-SLICED transcript — last ~200 lines, safe to Read in full>
 original_transcript_path: <path to the full untruncated transcript — only use if you genuinely need older context>
 last_run_iso: <ISO 8601 timestamp of the previous gardener run>
@@ -127,8 +129,10 @@ Total cap: 3 observations across all lenses per run.
 
 ### Step 2 — Generate candidate observations
 
-Read the transcript and touched files. Apply the primary lens (and optionally a
-secondary lens). For each candidate observation you consider:
+Start from `git_diff` (the actual changes this session) — it is the primary lens
+for code-level findings. Use the transcript for intent and for strategic/workflow
+signals that leave no diff. Read touched files for surrounding context. Apply the
+primary lens (and optionally a secondary lens). For each candidate observation:
 
 - Is this concretely evidenced by what you just read? (No → drop it.)
 - Is this a novel finding, not already obvious from the transcript itself? (No → drop it.)

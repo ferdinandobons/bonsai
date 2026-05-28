@@ -149,6 +149,47 @@ EOF
   [ "$(jq -r '.last_run_iso' "$BATS_TEST_TMPDIR/g-stdin.txt")" = "$prev" ]
 }
 
+@test "stop: gardener prompt includes a git_diff context field" {
+  fixture_projects_json "$CLAUDE_PROJECT_DIR"
+  fixture_state_json "1970-01-01T00:00:00Z"
+  ( cd "$CLAUDE_PROJECT_DIR" && git init -q && git config user.email t@t && git config user.name t \
+    && printf 'x\n' > f.txt && git add f.txt && git commit -qm init && printf 'y\n' >> f.txt )
+  local stub_dir="$BATS_TEST_TMPDIR/stub-bin"; mkdir -p "$stub_dir"
+  cat > "$stub_dir/claude" <<EOF
+#!/usr/bin/env bash
+cat - > "$BATS_TEST_TMPDIR/gd-stdin.txt"
+EOF
+  chmod +x "$stub_dir/claude"; export PATH="$stub_dir:$PATH"
+  local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
+  run_stop_hook_with_input "$input"
+  for i in $(seq 1 50); do [ -s "$BATS_TEST_TMPDIR/gd-stdin.txt" ] && break; sleep 0.1; done
+  jq -e 'has("git_diff")' "$BATS_TEST_TMPDIR/gd-stdin.txt"
+  # and it actually contains the change
+  jq -r '.git_diff' "$BATS_TEST_TMPDIR/gd-stdin.txt" | grep -q "f.txt"
+}
+
+@test "stop: a diff with multibyte UTF-8 truncated at the byte cap still dispatches" {
+  fixture_projects_json "$CLAUDE_PROJECT_DIR"
+  fixture_state_json "1970-01-01T00:00:00Z"
+  ( cd "$CLAUDE_PROJECT_DIR" && git init -q && git config user.email t@t && git config user.name t \
+    && printf 'seed\n' > big.txt && git add big.txt && git commit -qm init )
+  # >60KB of 2-byte chars so head -c 60000 splits a character mid-sequence.
+  ( cd "$CLAUDE_PROJECT_DIR" && printf 'è%.0s' {1..40000} > big.txt )
+  local stub_dir="$BATS_TEST_TMPDIR/stub-bin"; mkdir -p "$stub_dir"
+  cat > "$stub_dir/claude" <<EOF
+#!/usr/bin/env bash
+cat - > "$BATS_TEST_TMPDIR/mb-stdin.txt"
+EOF
+  chmod +x "$stub_dir/claude"; export PATH="$stub_dir:$PATH"
+  local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
+  run_stop_hook_with_input "$input"
+  for i in $(seq 1 50); do [ -s "$BATS_TEST_TMPDIR/mb-stdin.txt" ] && break; sleep 0.1; done
+  # Byte-truncating a multibyte diff must not break dispatch. jq 1.7+ tolerates
+  # the dangling byte (substitutes U+FFFD); this guards against a regression to
+  # a jq that would reject it.
+  jq -e 'has("git_diff")' "$BATS_TEST_TMPDIR/mb-stdin.txt"
+}
+
 @test "stop: malformed stdin JSON is silently ignored" {
   run bash -c 'echo "{not json" | bash "$BONSAI_PLUGIN_ROOT/hooks/stop.sh"'
   [ "$status" -eq 0 ]

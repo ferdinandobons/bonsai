@@ -38,9 +38,11 @@ bonsai_dispatch_gardener() {
   # The pipe from `printf` provides stdin to claude; we redirect the bash -c
   # subshell's stdout/stderr to the log file so we capture claude's full output.
   # Hard limits:
-  # --max-turns: PRIMARY cap on iterations. The gardener should normally finish
-  #   in 6-10 turns when its input has been pre-sliced by stop.sh. We set 15 as
-  #   slack for medium-large slices. This is the ONLY hard cap we use.
+  # --max-turns: PRIMARY cap on iterations. The gardener's 8-step workflow
+  #   typically needs 10-15 turns of tool work even with pre-sliced input
+  #   (Read transcript, Bash jq filtering, Bash find, evidence reads, Bash to
+  #   write branch file, Bash to regenerate INDEX). 25 gives meaningful slack
+  #   while still capping pathological loops. This is the ONLY hard cap we use.
   # --fallback-model: keeps the gardener responsive when the primary model is
   #   overloaded — graceful degradation, no hard fail.
   #
@@ -54,7 +56,7 @@ bonsai_dispatch_gardener() {
   nohup bash -c '
     printf "%s" "$1" | claude -p \
       --agent bonsai:gardener \
-      --max-turns 15 \
+      --max-turns 25 \
       --fallback-model sonnet \
       --output-format json
   ' bonsai-gardener "$prompt_input" \

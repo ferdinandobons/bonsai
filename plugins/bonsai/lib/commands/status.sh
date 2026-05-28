@@ -31,11 +31,22 @@ model="claude-sonnet-4-6"
 [ -f "$cfg" ] && model="$(jq -r '.gardener_model' "$cfg")"
 
 # Sum actual token usage from gardener log files in the last 24h.
-# Each gardener-*.log holds the claude -p result JSON with .usage.input_tokens
-# and .usage.output_tokens (set by the headless run itself, not estimated).
+# Each gardener-*.log holds the claude -p result JSON with .usage fields
+# (set by the headless run itself, not estimated).
+#
+# CC's .usage breaks input into four buckets:
+#   - input_tokens:               net new (uncached) prompt tokens
+#   - cache_read_input_tokens:    tokens read from prompt cache (cheaper, but real context)
+#   - cache_creation_input_tokens: tokens written to cache (one-time per cache entry)
+#   - output_tokens:              generation tokens
+# Summing only input + output misses the cache buckets, which dominate
+# subscription-credit consumption (1900x larger in observed gardener runs —
+# see branch 2026-05-28-001).
 gardener_log_dir="${CLAUDE_PLUGIN_DATA}/logs"
 total_input_tokens=0
 total_output_tokens=0
+total_cache_read=0
+total_cache_creation=0
 if [ -d "$gardener_log_dir" ]; then
   cutoff=$(date -u -v-1d +%Y%m%dT%H%M%SZ 2>/dev/null || date -u -d "1 day ago" +%Y%m%dT%H%M%SZ 2>/dev/null)
   for log in "$gardener_log_dir"/gardener-*.log; do
@@ -46,11 +57,15 @@ if [ -d "$gardener_log_dir" ]; then
     if [ -n "$cutoff" ] && [ "$ts" \< "$cutoff" ]; then continue; fi
     in_t=$(jq -r '.usage.input_tokens // 0' "$log" 2>/dev/null)
     out_t=$(jq -r '.usage.output_tokens // 0' "$log" 2>/dev/null)
+    cr_t=$(jq -r '.usage.cache_read_input_tokens // 0' "$log" 2>/dev/null)
+    cw_t=$(jq -r '.usage.cache_creation_input_tokens // 0' "$log" 2>/dev/null)
     [[ "$in_t" =~ ^[0-9]+$ ]] && total_input_tokens=$((total_input_tokens + in_t))
     [[ "$out_t" =~ ^[0-9]+$ ]] && total_output_tokens=$((total_output_tokens + out_t))
+    [[ "$cr_t" =~ ^[0-9]+$ ]] && total_cache_read=$((total_cache_read + cr_t))
+    [[ "$cw_t" =~ ^[0-9]+$ ]] && total_cache_creation=$((total_cache_creation + cw_t))
   done
 fi
-total_tokens=$((total_input_tokens + total_output_tokens))
+total_tokens=$((total_input_tokens + total_cache_read + total_cache_creation + total_output_tokens))
 
 echo "Bonsai health for $cwd"
 echo
@@ -65,9 +80,11 @@ echo "  global runs (24h):                $g_runs"
 echo "  global observations (24h):        $g_obs"
 echo
 echo "Token usage (last 24h, all projects):"
-echo "  input:   $total_input_tokens"
-echo "  output:  $total_output_tokens"
-echo "  total:   $total_tokens"
+echo "  input (fresh):       $total_input_tokens"
+echo "  input (cache read):  $total_cache_read"
+echo "  input (cache write): $total_cache_creation"
+echo "  output:              $total_output_tokens"
+echo "  total:               $total_tokens"
 
 err_log="${CLAUDE_PLUGIN_DATA}/logs/bonsai-errors.log"
 if [ -f "$err_log" ]; then

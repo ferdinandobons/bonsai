@@ -178,7 +178,8 @@ For each candidate observation:
    ```
 2. If `dedup_hash` is in `recent_dedup_hashes` → drop silently (already emitted recently).
 3. If the observation shares lens + theme with any entry in `trimmed_anti_patterns` → drop.
-4. Surviving candidates are your final emission set (maximum 3).
+4. Surviving candidates (maximum 3) go to the semantic judge in Step 5b, which is
+   the primary dedup. This exact-hash check is just a cheap backstop.
 
 ---
 
@@ -194,6 +195,71 @@ Assign severity to each surviving observation:
 
 When in doubt, downgrade severity. A normal observation labelled low is fine.
 A low observation labelled critical erodes trust permanently.
+
+The severity you assign here is a **proposal** — the judge pass (Step 5b)
+calibrates the final value. Don't agonize over it.
+
+---
+
+### Step 5b — Judge pass (semantic dedup + severity calibration)
+
+Before writing, run a cheap second model over your candidates. It catches
+duplicates the exact-hash check (Step 4) misses — the same problem worded
+differently as an existing open observation — and calibrates severity using the
+anti-patterns the user previously dismissed.
+
+**Pass data through files, never inline it into `bash -c`.** Candidate and
+observation text is LLM-generated and will contain quotes/apostrophes/braces;
+splicing it into a `bash -c '...'` string would break quoting or allow shell
+injection. Write the inputs with the Write tool, then have Bash read fixed paths.
+
+1. Collect the **open** observations into `/tmp/bonsai-judge-existing.json`. Run:
+   ```bash
+   bash -c '
+     out=""; first=1
+     for f in "$CLAUDE_PROJECT_DIR"/.claude/bonsai/branches/*.md; do
+       [ -f "$f" ] || continue
+       grep -q "^status: open$" "$f" || continue
+       id="$(sed -n "s/^id: //p" "$f" | head -1)"
+       [ -n "$id" ] || continue
+       title="$(sed -n "s/^title: //p" "$f" | head -1 | sed "s/^\"//; s/\"$//")"
+       entry="$(jq -n --arg id "$id" --arg t "$title" "{id:\$id,title:\$t}")"
+       [ $first -eq 0 ] && out="$out,"; first=0; out="$out$entry"
+     done
+     printf "[%s]" "$out" > /tmp/bonsai-judge-existing.json
+   '
+   ```
+2. Using the **Write tool** (not shell), write your candidates array to
+   `/tmp/bonsai-judge-candidates.json` as `[{"title":..,"tldr":..}, ...]`, in the
+   SAME order as your emission set (the judge refers to them by `candidate_index`),
+   and write `trimmed_anti_patterns` verbatim to `/tmp/bonsai-judge-anti.txt`.
+3. Build the prompt from the files and call Haiku (cheap, single turn). The paths
+   are fixed literals, so there is no injection surface:
+   ```bash
+   bash -c '
+     source "$CLAUDE_PLUGIN_ROOT/lib/judge.sh"
+     prompt="$(bonsai_judge_build_prompt \
+       "$(cat /tmp/bonsai-judge-candidates.json)" \
+       "$(cat /tmp/bonsai-judge-existing.json)" \
+       "$(cat /tmp/bonsai-judge-anti.txt 2>/dev/null)")"
+     printf "%s" "$prompt" | claude -p --model haiku --max-turns 1 --output-format json \
+       | jq -r ".result // empty" > /tmp/bonsai-judge-result.txt
+   '
+   ```
+4. Parse the verdicts from the result file (fixed path, no inline data):
+   ```bash
+   bash -c 'source "$CLAUDE_PLUGIN_ROOT/lib/judge.sh"; bonsai_judge_parse "$(cat /tmp/bonsai-judge-result.txt)"'
+   ```
+   Each line is `<candidate_index> <keep> <severity>`.
+5. **Fail open.** If the Haiku call errors or `bonsai_judge_parse` returns
+   nothing (nonzero), skip the judge and emit your candidates unchanged with
+   your own proposed severity — never lose a real finding to a judge hiccup.
+
+Apply the verdicts: keep only candidates with `keep=true`, override their
+severity with the judge's value. For dropped ones, append a one-line note to
+`~/.claude/plugins/data/bonsai-bonsai/logs/bonsai.log` (`judge: dropped "<title>"
+— duplicate_of/<reason>`) for transparency, then proceed to Step 6 with the
+survivors only.
 
 ---
 

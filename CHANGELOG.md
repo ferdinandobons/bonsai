@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gardener as a `git_diff` field, and `gardener.md` instructs it to triage from
   the actual changes first and use the transcript for intent / strategic /
   workflow signals. Previously the gardener saw only the transcript tail.
+- **Semantic dedup + calibrated severity via a Haiku judge pass (Stage 2).** New
+  `lib/judge.sh` builds a cheap second-model prompt and parses its verdict; the
+  gardener now runs `claude -p --model haiku` over its candidates before writing
+  to (a) drop observations that are the same problem as an existing open one
+  even when worded differently — beating the old exact-hash dedup — and (b)
+  calibrate severity using the user's dismissed anti-patterns. Inputs are passed
+  via fixed-path temp files (no shell injection); the gardener fails open if the
+  judge errors, so a real finding is never lost to a judge hiccup.
 
 ### Fixed
 - **The gardener was always told `last_run_iso = now`.** `stop.sh` read

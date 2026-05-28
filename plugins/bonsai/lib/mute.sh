@@ -65,6 +65,36 @@ bonsai_mute_is_muted() {
   [[ "$now" -lt "$until" ]]
 }
 
+# Global mute: $CLAUDE_PLUGIN_DATA/mute.json, same schema.
+# Lets a user silence Bonsai across all tended projects in one command.
+bonsai_mute_is_muted_global() {
+  local file="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/mute.json"
+  [[ -f "$file" ]] || return 1
+  local until
+  until="$(jq -r '.mute_until_epoch // 0' "$file" 2>/dev/null)"
+  [[ -z "$until" || "$until" == "null" ]] && return 1
+  local now
+  now="$(date -u +%s)"
+  [[ "$now" -lt "$until" ]]
+}
+
+bonsai_mute_sleep_global() {
+  local duration="$1"
+  local secs
+  secs="$(bonsai_mute_parse_duration "$duration")" || return 1
+  local until=$(( $(date -u +%s) + secs ))
+  local file="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/mute.json"
+  bonsai_ensure_dir "$(dirname "$file")" || return 1
+  local content
+  content="$(jq -n --argjson u "$until" '{"__version":1,"mute_until_epoch":$u}')" || return 1
+  bonsai_json_write "$file" "$content"
+}
+
+bonsai_mute_wake_global() {
+  local file="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/mute.json"
+  rm -f "$file"
+}
+
 bonsai_mute_remaining_seconds() {
   local project_dir="$1"
   local file

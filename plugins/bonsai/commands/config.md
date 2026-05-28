@@ -34,13 +34,25 @@ The user has invoked `/bonsai:config $key $value` in $CLAUDE_PROJECT_DIR.
       echo "ERR: unknown config key. Allowed: gardener_model, throttle_min_minutes, max_observations_per_run, push_notifications_enabled, auto_archive_kept_after_days, auto_archive_trimmed_after_days, push_notifications_per_hour"
       exit 0 ;;
   esac
+  # Sanity-check the existing config FIRST. If it is already corrupt, refuse
+  # to write — otherwise jq fails, tmp ends up empty, and the mv silently
+  # wipes the user's config (P1-3 from the post-ship review).
+  if ! jq empty "$cfg" 2>/dev/null; then
+    echo "ERR: config.json is currently corrupt. Fix it by hand or delete it and re-run /bonsai:tend."
+    exit 0
+  fi
   tmp=$(mktemp)
   if [[ "$value" =~ ^-?[0-9]+$ ]]; then
-    jq --arg k "$key" --argjson v "$value" ".[\$k] = \$v" "$cfg" > "$tmp"
+    jq --arg k "$key" --argjson v "$value" ".[\$k] = \$v" "$cfg" > "$tmp" 2>/dev/null
   elif [[ "$value" =~ ^(true|false)$ ]]; then
-    jq --arg k "$key" --argjson v "$value" ".[\$k] = \$v" "$cfg" > "$tmp"
+    jq --arg k "$key" --argjson v "$value" ".[\$k] = \$v" "$cfg" > "$tmp" 2>/dev/null
   else
-    jq --arg k "$key" --arg v "$value" ".[\$k] = \$v" "$cfg" > "$tmp"
+    jq --arg k "$key" --arg v "$value" ".[\$k] = \$v" "$cfg" > "$tmp" 2>/dev/null
+  fi
+  if [ ! -s "$tmp" ] || ! jq empty "$tmp" 2>/dev/null; then
+    rm -f "$tmp"
+    echo "ERR: failed to update config (jq error). Leaving config.json untouched."
+    exit 0
   fi
   mv "$tmp" "$cfg"
   echo "OK: $key = $value"

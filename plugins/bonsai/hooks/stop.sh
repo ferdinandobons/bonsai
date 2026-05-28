@@ -39,7 +39,11 @@ main() {
   # 1. Whitelist gate
   bonsai_whitelist_is_tended "$cwd" || exit 0
 
-  # 2. Mute gate (per-project)
+  # 2. Mute gate — global FIRST, then per-project
+  if bonsai_mute_is_muted_global; then
+    bonsai_log INFO "stop: global mute active, skip"
+    exit 0
+  fi
   if bonsai_mute_is_muted "$cwd"; then
     bonsai_log INFO "stop: project muted, skip"
     exit 0

@@ -75,3 +75,30 @@ teardown() { teardown_sandbox; }
   [ "$status" -eq 0 ]
   [ "$output" = "0" ]
 }
+
+@test "mute: is_muted_global false when no global mute file" {
+  run bonsai_mute_is_muted_global
+  [ "$status" -eq 1 ]
+}
+
+@test "mute: sleep_global then is_muted_global true" {
+  bonsai_mute_sleep_global "1h"
+  run bonsai_mute_is_muted_global
+  [ "$status" -eq 0 ]
+}
+
+@test "mute: wake_global removes global mute" {
+  bonsai_mute_sleep_global "1h"
+  bonsai_mute_wake_global
+  run bonsai_mute_is_muted_global
+  [ "$status" -eq 1 ]
+}
+
+@test "mute: global and project mutes are independent" {
+  bonsai_mute_sleep "$CLAUDE_PROJECT_DIR" "1h"
+  # Global not set
+  run bonsai_mute_is_muted_global
+  [ "$status" -eq 1 ]
+  run bonsai_mute_is_muted "$CLAUDE_PROJECT_DIR"
+  [ "$status" -eq 0 ]
+}

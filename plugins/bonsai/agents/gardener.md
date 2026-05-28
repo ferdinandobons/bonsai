@@ -10,6 +10,7 @@ allowed-tools:
   - Glob
   - Write
   - mcp__ccd_session__spawn_task
+  - PushNotification
 model: claude-sonnet-4-6
 ---
 
@@ -236,6 +237,26 @@ prompt: <observation.action_brief>
 
 Do NOT create chips for **low** severity observations. Low observations receive a
 branch file only.
+
+For **critical** observations only, ALSO send a push notification (rate-limited
+to ≤5 per project per hour by `bonsai_push_rate_ok`):
+
+```bash
+bash -c '
+  source "$CLAUDE_PLUGIN_ROOT/lib/push.sh"
+  source "$CLAUDE_PLUGIN_ROOT/lib/quota.sh"
+  if bonsai_push_rate_ok "<project_dir>"; then
+    bonsai_push_format "<obs_json>"
+    bonsai_quota_record_event "push" "<project_dir>"
+  fi
+'
+```
+
+If the bash block printed a JSON `{title, body}` (rate-limit allowed it), call
+the `PushNotification` tool with those two fields. If the bash block printed
+nothing, the rate limit was hit — skip the push silently.
+
+Do NOT push for normal or low. Push is for "wake the user up" only.
 
 ---
 

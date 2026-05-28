@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.2.3] — 2026-05-28
+
+### Changed
+- **README refreshed for parity with shipped behavior.** Three stale
+  spots fixed:
+  - Commands table reorganized into four functional groups
+    (Watch / Read / Triage / Config) matching `/bonsai:help`, with
+    real argument syntax inline (`[N=5]`, `<id>`, `<30m|1h|4h|1d>`,
+    `[--global]`, plus `/bonsai:start` flags).
+  - `/bonsai:unmute` row corrected: was "Resume after sleep", now
+    "Resume after a mute". (`sleep`/`wake` were renamed to
+    `mute`/`unmute` in v0.2.0; the README row was missed.)
+  - Bottom `Latest:` changelog link updated from `v0.1.4` to current.
+
+No code changes in this release — docs only.
+
 ## [0.2.2] — 2026-05-28
 
 ### Removed

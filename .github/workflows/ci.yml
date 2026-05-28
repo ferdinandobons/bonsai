@@ -3,6 +3,7 @@ name: ci
 on:
   push:
     branches: [main]
+    tags: ['v*']      # also gate release tags — caught by gardener obs 2026-05-28-003
   pull_request:
     branches: [main]
 

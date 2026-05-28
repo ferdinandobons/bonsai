@@ -90,7 +90,13 @@ bonsai_branches_write() {
   local safe_evidence; safe_evidence="$(_bonsai_yaml_sanitize_oneline "$evidence_ref")"
   safe_evidence="${safe_evidence//\"/\\\"}"
 
-  {
+  # Atomic write: tmp + mv so a killed gardener (60s budget) never leaves
+  # a partial branch file behind. The whole codebase uses this pattern for
+  # JSON and INDEX.md; branches were the last non-atomic write.
+  # (Caught by the gardener itself, observation 2026-05-28-002.)
+  local tmp
+  tmp="$(mktemp "${file}.tmp.XXXXXX")" || return 1
+  if ! {
     printf -- '---\n'
     printf 'id: %s\n'             "$id"
     printf 'created: %s\n'        "$created"
@@ -111,7 +117,11 @@ bonsai_branches_write() {
       while IFS= read -r r; do printf -- '- [[%s]]\n' "$r"; done <<< "$related"
       printf '\n'
     fi
-  } > "$file"
+  } > "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$file" || { rm -f "$tmp"; return 1; }
   # Emit the resolved path so callers (gardener, tests) know where the
   # branch was written without having to reconstruct the filename.
   printf '%s' "$file"

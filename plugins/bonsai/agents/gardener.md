@@ -8,7 +8,7 @@ tools:
   - Glob
   - Write
 model: claude-sonnet-4-6
-max-turns: 8
+max-turns: 15
 ---
 
 # Bonsai Gardener — System Prompt

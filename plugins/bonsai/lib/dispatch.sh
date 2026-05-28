@@ -40,7 +40,7 @@ bonsai_dispatch_gardener() {
   nohup bash -c '
     printf "%s" "$1" | claude -p \
       --agent bonsai:gardener \
-      --max-turns 8 \
+      --max-turns 15 \
       --max-budget-usd 0.50 \
       --fallback-model sonnet \
       --output-format json

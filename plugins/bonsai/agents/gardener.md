@@ -42,7 +42,8 @@ You receive the following fields in your prompt:
 
 ```yaml
 project_dir: <absolute path to the project>
-transcript_path: <path to the session transcript file>
+transcript_path: <path to a PRE-SLICED transcript — last ~200 lines, safe to Read in full>
+original_transcript_path: <path to the full untruncated transcript — only use if you genuinely need older context>
 last_run_iso: <ISO 8601 timestamp of the previous gardener run>
 now_iso: <ISO 8601 timestamp of this run>
 recent_dedup_hashes: [<sha256>, ...]   # up to 50 — skip candidates whose hash matches
@@ -52,6 +53,10 @@ config:
   max_observations_per_run: 3
 trimmed_anti_patterns: <full contents of trimmed.md>  # observations user rejected — avoid repeating
 ```
+
+The slice size is controlled by `transcript_tail_lines` in `.claude/bonsai/config.json`
+(default 200). Real session transcripts can be MB-large; the Stop hook tails them
+before dispatch so you don't have to manage size yourself.
 
 ---
 
@@ -74,21 +79,21 @@ Do not call any tool that modifies user source code. Do not call network tools.
 
 Before reading anything, decide which lens to apply. This is a fast, low-token step.
 
-1. Read the session transcript from `transcript_path` (a JSONL file passed to you
-   in the input). Use the `Read` tool directly on it:
+The `transcript_path` in your input has been **pre-sliced by the Stop hook** to
+the last ~200 lines of the session transcript (configurable via
+`transcript_tail_lines` in `.claude/bonsai/config.json`). You can `Read` it
+fully without worrying about size. The original full transcript path is also
+available as `original_transcript_path` if you ever need broader context, but
+99% of the time the slice is what you want.
+
+1. Read the (sliced) transcript:
    ```
-   Read tool with file_path = <transcript_path>, limit = 1000
+   Read tool with file_path = <transcript_path>
    ```
-   If the transcript is very long, also focus on the most recent turns:
+2. Parse the lines as JSONL and extract tool-use events. Each line is a session
+   event. Use `Bash` with `jq` (the slice is small enough to scan in one pass):
    ```bash
-   wc -l "<transcript_path>"
-   tail -n 500 "<transcript_path>"
-   ```
-2. Parse the transcript lines as JSONL. Each line is a session event. Filter
-   for events with `.type == "tool_use"` since `last_run_iso`, group by tool
-   name. Use `Bash` with `jq`:
-   ```bash
-   jq -c 'select(.type == "tool_use" and .timestamp > "<last_run_iso>")' \
+   jq -c 'select(.type == "tool_use" or (.message.content[]? | .type == "tool_use"))' \
      "<transcript_path>" 2>/dev/null
    ```
 3. Extract files touched by Write/Edit/Create tool calls from those events
@@ -100,7 +105,7 @@ Before reading anything, decide which lens to apply. This is a fast, low-token s
    ```
 5. `touched_files` = union of transcript-touched + mtime-changed files.
 6. `retry_signal` = maximum count of any (tool_name, normalized_args) pair appearing
-   more than twice in the transcript.
+   more than twice in the transcript slice.
 7. `conv_shape` = ratio of message characters to tool call count.
    - High (> 200 chars/call) → deep-talk session.
    - Low (≤ 200 chars/call) → hands-on coding session.

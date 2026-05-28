@@ -37,11 +37,24 @@ bonsai_dispatch_gardener() {
   # We avoid `setsid` for portability (not on macOS by default).
   # The pipe from `printf` provides stdin to claude; we redirect the bash -c
   # subshell's stdout/stderr to the log file so we capture claude's full output.
+  # Hard limits:
+  # --max-turns: PRIMARY cap on iterations. The gardener should normally finish
+  #   in 6-10 turns when its input has been pre-sliced by stop.sh. We set 15 as
+  #   slack for medium-large slices. This is the ONLY hard cap we use.
+  # --fallback-model: keeps the gardener responsive when the primary model is
+  #   overloaded — graceful degradation, no hard fail.
+  #
+  # We intentionally do NOT set --max-budget-usd. Bonsai's target users run on
+  # Claude subscription plans (Pro/Max/Team/Enterprise) where the gardener
+  # consumes the included Agent SDK credit; USD numbers reported by claude -p
+  # are API-equivalent estimates, not actual deductions. Capping by USD is
+  # meaningless. The combination of --max-turns and the pre-sliced transcript
+  # (see stop.sh transcript_tail_lines) bounds work effectively. Token usage
+  # is recorded in the gardener log's .usage field for post-hoc visibility.
   nohup bash -c '
     printf "%s" "$1" | claude -p \
       --agent bonsai:gardener \
       --max-turns 15 \
-      --max-budget-usd 0.50 \
       --fallback-model sonnet \
       --output-format json
   ' bonsai-gardener "$prompt_input" \

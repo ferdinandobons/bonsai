@@ -91,18 +91,43 @@ main() {
   local cfg_file="$cwd/.claude/bonsai/config.json"
   local model="claude-sonnet-4-6"
   local lenses='["technical","strategic","workflow"]'
+  local transcript_tail_lines=200
   if [[ -f "$cfg_file" ]]; then
     local m; m="$(bonsai_json_get "$cfg_file" '.gardener_model')"
     [[ -n "$m" ]] && model="$m"
     local l; l="$(jq -c '.lenses_enabled // ["technical","strategic","workflow"]' "$cfg_file" 2>/dev/null)"
     [[ -n "$l" ]] && lenses="$l"
+    local t; t="$(jq -r '.transcript_tail_lines // 200' "$cfg_file" 2>/dev/null)"
+    [[ "$t" =~ ^[0-9]+$ ]] && transcript_tail_lines="$t"
+  fi
+
+  # 7b. Pre-slice the transcript: real session transcripts can easily exceed
+  # 1MB / 200k tokens (Sonnet context window), making the gardener spend most
+  # of its turns reading and filtering instead of producing observations.
+  # The hook slices to the last N lines (default 200, configurable via
+  # config.json's transcript_tail_lines) and writes to a temp file. The
+  # gardener receives the small slice and can focus on triage + emission.
+  local sliced_transcript=""
+  local sliced_dir="$CLAUDE_PLUGIN_DATA/sliced"
+  if [[ -n "$transcript_path" && -f "$transcript_path" ]]; then
+    bonsai_ensure_dir "$sliced_dir" >/dev/null 2>&1 || true
+    sliced_transcript="$sliced_dir/sliced-${session_id:-unknown}-$(date -u +%Y%m%dT%H%M%SZ).jsonl"
+    # tail -N is portable and schema-agnostic; jq filtering would require knowing
+    # the transcript event schema, which is an internal CC format that may change.
+    tail -n "$transcript_tail_lines" "$transcript_path" > "$sliced_transcript" 2>/dev/null || true
+    # If the tail produced nothing useful, fall back to passing the original path
+    # (the gardener has guidance to use tail itself for large files).
+    [[ ! -s "$sliced_transcript" ]] && sliced_transcript="$transcript_path"
+  else
+    sliced_transcript="$transcript_path"
   fi
 
   local prompt_input
   prompt_input="$(jq -n \
     --arg cwd "$cwd" \
     --arg sid "$session_id" \
-    --arg tp "$transcript_path" \
+    --arg tp "$sliced_transcript" \
+    --arg original_tp "$transcript_path" \
     --arg now "$now" \
     --arg last_run "$last_run_iso" \
     --arg model "$model" \
@@ -113,6 +138,7 @@ main() {
       "project_dir": $cwd,
       "session_id": $sid,
       "transcript_path": $tp,
+      "original_transcript_path": $original_tp,
       "last_run_iso": $last_run,
       "now_iso": $now,
       "gardener_model": $model,

@@ -9,6 +9,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.3.0] — 2026-05-28
+
+This is the release in which Bonsai actually starts working end-to-end.
+Versions 0.1.0 through 0.2.4 had a broken dispatch architecture: the Stop
+hook emitted `hookSpecificOutput.additionalContext` to ask Claude to spawn
+the gardener subagent, but Claude Code's Stop hook schema rejects that
+field (only `PreToolUse`, `UserPromptSubmit`, `PostToolUse`, and
+`PostToolBatch` accept context injection). Every dispatch attempt was
+silently rejected by CC's schema validator. The plugin appeared installed
+and watching, but the gardener never ran.
+
+### Fixed
+
+- **Stop hook now spawns the gardener via a detached `claude -p` subprocess.**
+  `lib/dispatch.sh` runs `nohup claude -p --agent bonsai:gardener … &
+  disown` so the gardener executes in its own headless session, completely
+  independent of the parent CC session. The Stop hook returns empty output
+  (schema-compliant) and the gardener writes observations to
+  `.claude/bonsai/branches/` asynchronously.
+- **`CLAUDE_PLUGIN_DATA` export carried forward from v0.2.4.** Still needed
+  because CC doesn't export it to slash command Bash() subprocesses.
+
+### Changed
+
+- **Transcript pre-slicing.** Real session transcripts can exceed 1MB /
+  200k tokens — well beyond Sonnet's context window — making the gardener
+  spend most of its turns reading and filtering instead of producing
+  observations. The Stop hook now runs `tail -n $transcript_tail_lines`
+  (default 200, configurable in `.claude/bonsai/config.json`) before
+  dispatch, writes the slice to `$CLAUDE_PLUGIN_DATA/sliced/`, and passes
+  the small file path to the gardener. The full original path is still
+  available as `original_transcript_path` for the rare case the gardener
+  needs older context.
+- **Gardener prompt simplified.** Step 1 no longer warns about large
+  transcripts because the input is pre-sliced. Tool list reduced to standard
+  CC tools (`Bash, Read, Grep, Glob, Write`); transcript reading switched
+  from `mcp__ccd_session_mgmt__search_session_transcripts` (which is not
+  reliably available in `claude -p` subprocess context) to direct `Read` on
+  `transcript_path`.
+- **Gardener frontmatter cleaned.** Dropped `disable-model-invocation: true`
+  (silently ignored — only valid for Skills). Renamed `allowed-tools` to
+  `tools` (canonical subagent field name per CC docs). Added
+  `max-turns: 25` to cap runaway loops at the subagent level in addition
+  to the dispatch-level cap.
+- **`/bonsai:status` now reports actual token usage.** Instead of estimating
+  USD cost (meaningless for subscription users — gardener runs consume the
+  Agent SDK credit included with Pro/Max/Team/Enterprise plans, not actual
+  USD), status sums real token counts from gardener logs across the four
+  CC buckets (`input_tokens`, `cache_read_input_tokens`,
+  `cache_creation_input_tokens`, `output_tokens`).
+- **Dispatch limits philosophy.** Dropped `--max-budget-usd`. The combination
+  of `--max-turns 25` and the pre-sliced transcript bounds gardener work
+  effectively for subscription users.
+
+### Removed
+
+- **Chips (`mcp__ccd_session__spawn_task`) and push notifications
+  (`PushNotification`).** Both depend on tools that aren't reliably
+  available in `claude -p` subprocess context. v0.3.0 is filesystem-only:
+  observations land in `.claude/bonsai/branches/` and are surfaced via
+  the auto-regenerated `INDEX.md` (and `/bonsai:list`). Chip + push may
+  return in a later release once their underlying mechanisms stabilize.
+
+### The proof
+
+On its first real CC-triggered run against this dev session's transcript,
+the gardener caught a bug introduced 30 minutes earlier in the same
+session: `status.sh` was summing only `input_tokens + output_tokens`,
+omitting cache-read and cache-write tokens that dominate actual context
+consumption (~54x underreport for the previous gardener run). The
+observation cited the exact file path, lines 47–50, and provided a
+copy-pasteable fix. The fix was applied in this release. The full
+observation lives at
+`branches/2026-05-28-001-token-display-in-bonsai-status-omits-cac.md`.
+
+This is exactly the use case Bonsai exists for, and it demonstrated it
+on its own codebase.
+
+### Migration from v0.2.x
+
+```
+/plugin marketplace update bonsai
+/reload-plugins
+```
+
+If that doesn't pull v0.3.0 immediately, force a fresh install:
+
+```
+/plugin uninstall bonsai@bonsai
+/plugin marketplace remove bonsai
+/plugin marketplace add ferdinandobons/bonsai
+/plugin install bonsai@bonsai
+/reload-plugins
+```
+
+Existing branch files and per-project state are unaffected.
+
 ## [0.2.4] — 2026-05-28
 
 ### Fixed

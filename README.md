@@ -102,16 +102,24 @@ That is the entire setup. Bonsai now watches this project silently. The minimum 
 
 ## How it works
 
-After each turn of Claude Code, a `Stop` hook script runs. It clears four gates in order: whitelist, mute, throttle, daily quota. If any gate fails, it exits silently with no effect on your session. If all pass, it dispatches a background subagent (the gardener) that:
+After each turn of Claude Code, a `Stop` hook script runs. It clears four gates in order: whitelist, mute, throttle, daily quota. If any gate fails, it exits silently with no effect on your session.
 
-1. Reads the recent session transcript.
-2. Picks one of three lenses based on what just happened: **technical** (bug patterns, security risks, performance smells, test gaps), **strategic** (architectural decision points, scope creep, unanswered questions), **workflow** (repeated steps that should be automated, missing slash commands).
-3. Generates between zero and three observations. Most of the time zero is the right answer.
+If all gates pass, the hook:
+
+1. Slices the session transcript to the last 200 lines (configurable via `transcript_tail_lines`) so the gardener gets a bounded input regardless of how long the session is.
+2. Spawns `claude -p --agent bonsai:gardener` as a fully detached subprocess (`nohup … & disown`) and returns empty output. The gardener runs independently of the parent session — your turn ends immediately.
+
+The gardener then, in its own headless context:
+
+1. Reads the sliced transcript and the project state since the last run.
+2. Picks one of three lenses: **technical** (bug patterns, security risks, performance smells, test gaps), **strategic** (architectural decision points, scope creep, unanswered questions), **workflow** (repeated steps that should be automated, missing slash commands).
+3. Generates between zero and three observations. **Zero is the most common correct answer.**
 4. Writes survivors to `.claude/bonsai/branches/<id>-<slug>.md` with full frontmatter and an action brief.
-5. For `critical` severity: sends a push notification (rate-limited to 5 per hour per project).
-6. For `critical` and `normal`: creates a clickable chip you can spin into a fresh task session.
+5. Regenerates `.claude/bonsai/INDEX.md` so new observations show up in `/bonsai:list` and your editor immediately.
 
 Observations live as readable markdown files inside each project. Commit them to git if you want a team-shared journal, or gitignore them if you want them private. Your choice, project by project.
+
+Each gardener run is capped at 25 iterations and uses your Agent SDK credit (included with Claude Pro/Max/Team/Enterprise plans). Token usage per project, per day, is visible via `/bonsai:status`.
 
 ## Uninstall
 
@@ -156,4 +164,4 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report vulnerabil
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.2.4](https://github.com/ferdinandobons/bonsai/releases/tag/v0.2.4).
+See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.3.0](https://github.com/ferdinandobons/bonsai/releases/tag/v0.3.0).

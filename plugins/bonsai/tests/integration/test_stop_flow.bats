@@ -46,15 +46,33 @@ run_stop_hook_with_input() {
   [ -z "$output" ]
 }
 
-@test "stop: when all gates pass, emits hookSpecificOutput JSON" {
+@test "stop: when all gates pass, returns empty output and spawns gardener" {
   fixture_projects_json "$CLAUDE_PROJECT_DIR"
   fixture_state_json "1970-01-01T00:00:00Z"
+  # Stub `claude` so dispatch doesn't make a real API call
+  local stub_dir="$BATS_TEST_TMPDIR/stub-bin"
+  mkdir -p "$stub_dir"
+  export STUB_OUT="$BATS_TEST_TMPDIR/gardener-ran.txt"
+  cat > "$stub_dir/claude" <<EOF
+#!/usr/bin/env bash
+echo "gardener invoked at \$(date)" > "$STUB_OUT"
+EOF
+  chmod +x "$stub_dir/claude"
+  export PATH="$stub_dir:$PATH"
+
   local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" \
     '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
   run run_stop_hook_with_input "$input"
   [ "$status" -eq 0 ]
-  echo "$output" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null
-  echo "$output" | jq -r '.hookSpecificOutput.additionalContext' | grep -q "bonsai:gardener"
+  # Hook output must be empty (or {}) so CC's Stop hook schema validator accepts it
+  [[ -z "$output" || "$output" == "{}" ]]
+  # Give the backgrounded gardener a moment to write its evidence (poll up to 3s)
+  local i=0
+  while [ ! -f "$STUB_OUT" ] && [ $i -lt 30 ]; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  [ -f "$STUB_OUT" ]
 }
 
 @test "stop: when gates pass, updates state.json last_run_iso" {

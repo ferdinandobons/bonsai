@@ -38,6 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `transient_data_ttl_days` (default 7, configurable via `/bonsai:config`).
   The persistent `bonsai.log` / `bonsai-errors.log` are never matched.
   (`lib/archive.sh`)
+- **Gardener run health in `/bonsai:status`.** A new `lib/telemetry.sh` reads
+  the per-run gardener logs and `/bonsai:status` now reports completed vs
+  errored runs, how many hit the turn cap (`subtype == error_max_turns`), and
+  the peak `num_turns` used in the last 24h. This makes any future
+  `--max-turns` change data-driven instead of guesswork (the cap was bumped
+  8→15→25 blind). Note: the run's turn outcome lives in `subtype`, not the
+  top-level `stop_reason` (which is the last API message's reason).
 
 ## [0.3.1] — 2026-05-28
 

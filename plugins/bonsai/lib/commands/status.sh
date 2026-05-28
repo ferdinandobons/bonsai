@@ -5,6 +5,7 @@ source "${CLAUDE_PLUGIN_ROOT}/lib/common.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/whitelist.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/mute.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/quota.sh"
+source "${CLAUDE_PLUGIN_ROOT}/lib/telemetry.sh"
 
 cwd="${CLAUDE_PROJECT_DIR}"
 
@@ -47,8 +48,8 @@ total_input_tokens=0
 total_output_tokens=0
 total_cache_read=0
 total_cache_creation=0
+cutoff=$(date -u -v-1d +%Y%m%dT%H%M%SZ 2>/dev/null || date -u -d "1 day ago" +%Y%m%dT%H%M%SZ 2>/dev/null)
 if [ -d "$gardener_log_dir" ]; then
-  cutoff=$(date -u -v-1d +%Y%m%dT%H%M%SZ 2>/dev/null || date -u -d "1 day ago" +%Y%m%dT%H%M%SZ 2>/dev/null)
   for log in "$gardener_log_dir"/gardener-*.log; do
     [ -f "$log" ] || continue
     fname=$(basename "$log")
@@ -85,6 +86,18 @@ echo "  input (cache read):  $total_cache_read"
 echo "  input (cache write): $total_cache_creation"
 echo "  output:              $total_output_tokens"
 echo "  total:               $total_tokens"
+
+# Gardener run health: completed vs errored, how many hit the turn cap, and the
+# peak turns used — makes any future --max-turns bump data-driven instead of
+# guesswork (see branch 2026-05-28-002).
+read -r g_total g_completed g_errored g_maxturns g_peak \
+  <<< "$(bonsai_telemetry_gardener_stats "$gardener_log_dir" "$cutoff")"
+echo
+echo "Gardener runs (last 24h):"
+echo "  completed:        $g_completed"
+echo "  errored:          $g_errored"
+echo "  hit max-turns:    $g_maxturns"
+echo "  peak turns used:  $g_peak"
 
 err_log="${CLAUDE_PLUGIN_DATA}/logs/bonsai-errors.log"
 if [ -f "$err_log" ]; then

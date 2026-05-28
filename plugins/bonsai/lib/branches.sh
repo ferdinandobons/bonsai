@@ -10,10 +10,10 @@ source "${BASH_SOURCE[0]%/*}/common.sh"
 _bonsai_branches_dir() { printf '%s/.claude/bonsai/branches' "$1"; }
 
 # Next free id of the form <day>-NNN for a given day (YYYY-MM-DD), scanning
-# existing branch files. Shared by allocate_id and the collision-safe write
-# path so id assignment is deterministic in code — never delegated to the LLM,
-# which cannot reliably count existing ids and has produced duplicate ids in
-# practice (two runs both picking 001).
+# existing branch files. Used by the collision-safe write path so id assignment
+# is deterministic in code — never delegated to the LLM, which cannot reliably
+# count existing ids and has produced duplicate ids in practice (two runs both
+# picking 001).
 _bonsai_branches_next_free_id() {
   local project_dir="$1"
   local day="$2"
@@ -30,13 +30,6 @@ _bonsai_branches_next_free_id() {
   done
   shopt -u nullglob
   printf '%s-%03d' "$day" $((max + 1))
-}
-
-# Allocate next id of the form YYYY-MM-DD-NNN for today.
-bonsai_branches_allocate_id() {
-  local project_dir="$1"
-  local today; today="$(date -u +%Y-%m-%d)"
-  _bonsai_branches_next_free_id "$project_dir" "$today"
 }
 
 # Extract a single field from the observation JSON, fail loudly on missing/null.

@@ -61,14 +61,6 @@ teardown() { teardown_sandbox; }
   [ "$output" = "1" ]
 }
 
-@test "whitelist: list returns all entries one per line" {
-  fixture_projects_json "/x" "/y"
-  run bonsai_whitelist_list
-  [ "$status" -eq 0 ]
-  echo "$output" | grep -q "^/x$"
-  echo "$output" | grep -q "^/y$"
-}
-
 @test "whitelist: remove on corrupt file returns 1 and logs an error" {
   echo "{not valid json" > "$CLAUDE_PLUGIN_DATA/projects.json"
   run bonsai_whitelist_remove "/foo"

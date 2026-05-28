@@ -67,10 +67,3 @@ bonsai_whitelist_remove() {
   fi
   bonsai_json_write "$file" "$updated"
 }
-
-bonsai_whitelist_list() {
-  local file
-  file="$(_bonsai_whitelist_file)"
-  [[ -f "$file" ]] || return 0
-  jq -r '.tended[]' "$file" 2>/dev/null || true
-}

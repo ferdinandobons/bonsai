@@ -34,7 +34,6 @@ fixture_config_json() {
   "lenses_enabled": ["technical", "strategic", "workflow"],
   "auto_archive_kept_after_days": 14,
   "auto_archive_trimmed_after_days": 7,
-  "push_notifications_enabled": true,
   "max_observations_per_run": 3
 }
 EOF

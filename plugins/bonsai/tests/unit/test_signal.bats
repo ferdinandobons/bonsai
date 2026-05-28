@@ -57,15 +57,3 @@ init_repo() {
   [ "$before" = "$(bonsai_signal_diff_hash "$REPO")" ]
 }
 
-@test "signal: diff_stat is empty for a clean/non-git dir" {
-  run bonsai_signal_diff_stat "$REPO"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
-@test "signal: diff_stat reports a modified tracked file" {
-  init_repo
-  ( cd "$REPO" && printf 'b\n' >> f.txt )
-  run bonsai_signal_diff_stat "$REPO"
-  echo "$output" | grep -q "f.txt"
-}

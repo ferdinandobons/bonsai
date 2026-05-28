@@ -26,9 +26,3 @@ bonsai_signal_diff_hash() {
   fi
   printf '%s' "$payload" | { shasum -a 256 2>/dev/null || sha256sum; } | awk '{print $1}'
 }
-
-# Human-readable diff-stat (tracked changes vs HEAD). Empty for clean/non-git.
-bonsai_signal_diff_stat() {
-  local dir="$1"
-  git -C "$dir" diff HEAD --stat -- . "$_BONSAI_SIGNAL_EXCLUDE" 2>/dev/null || true
-}

@@ -10,23 +10,6 @@ setup() {
 }
 teardown() { teardown_sandbox; }
 
-@test "branches: allocate_id returns date-NNN format" {
-  run bonsai_branches_allocate_id "$CLAUDE_PROJECT_DIR"
-  [ "$status" -eq 0 ]
-  [[ "$output" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{3}$ ]]
-}
-
-@test "branches: allocate_id increments per same day" {
-  local a; a="$(bonsai_branches_allocate_id "$CLAUDE_PROJECT_DIR")"
-  mkdir -p "$CLAUDE_PROJECT_DIR/.claude/bonsai/branches"
-  touch "$CLAUDE_PROJECT_DIR/.claude/bonsai/branches/${a}-fake.md"
-  local b; b="$(bonsai_branches_allocate_id "$CLAUDE_PROJECT_DIR")"
-  [ "$a" != "$b" ]
-  local an="${a: -3}"
-  local bn="${b: -3}"
-  [ "$((10#$bn))" -eq "$((10#$an + 1))" ]
-}
-
 @test "branches: write creates file with frontmatter + body" {
   local obs='{
     "id":"2026-05-27-001",

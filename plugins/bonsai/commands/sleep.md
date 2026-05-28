@@ -3,31 +3,14 @@ name: sleep
 description: Silence Bonsai temporarily for this project (or all projects with --global)
 argument-hint: "<30m|1h|4h|1d> [--global]"
 arguments: [duration, scope]
-allowed-tools:
-  - Bash
+allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/sleep.sh:*)"]
 ---
 
-The user has invoked `/bonsai:sleep $duration $scope` in $CLAUDE_PROJECT_DIR.
+The user has invoked `/bonsai:sleep $duration $scope` in the current project.
 
-!`bash -c '
-  source "$CLAUDE_PLUGIN_ROOT/lib/common.sh"
-  source "$CLAUDE_PLUGIN_ROOT/lib/mute.sh"
-  duration="$1"
-  scope="$2"
-  if [ "$scope" = "--global" ]; then
-    if bonsai_mute_sleep_global "$duration"; then
-      echo "OK_GLOBAL"
-    else
-      echo "ERR: invalid duration. Use 30m, 1h, 4h, or 1d."
-    fi
-  else
-    if bonsai_mute_sleep "$CLAUDE_PROJECT_DIR" "$duration"; then
-      echo "OK_PROJECT"
-    else
-      echo "ERR: invalid duration. Use 30m, 1h, 4h, or 1d."
-    fi
-  fi
-' _ "$duration" "$scope"`
+```!
+"${CLAUDE_PLUGIN_ROOT}/lib/commands/sleep.sh" $duration $scope
+```
 
 If the previous line printed `OK_PROJECT`, tell the user:
 ```

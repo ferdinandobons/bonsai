@@ -3,25 +3,14 @@ name: wake
 description: Resume Bonsai after sleep (project; --global also clears global mute)
 argument-hint: "[--global]"
 arguments: [scope]
-allowed-tools:
-  - Bash
+allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/wake.sh:*)"]
 ---
 
-The user has invoked `/bonsai:wake $scope` in $CLAUDE_PROJECT_DIR.
+The user has invoked `/bonsai:wake $scope` in the current project.
 
-!`bash -c '
-  source "$CLAUDE_PLUGIN_ROOT/lib/common.sh"
-  source "$CLAUDE_PLUGIN_ROOT/lib/mute.sh"
-  scope="$1"
-  if [ "$scope" = "--global" ]; then
-    bonsai_mute_wake_global
-    bonsai_mute_wake "$CLAUDE_PROJECT_DIR"
-    echo "OK_GLOBAL"
-  else
-    bonsai_mute_wake "$CLAUDE_PROJECT_DIR"
-    echo "OK_PROJECT"
-  fi
-' _ "$scope"`
+```!
+"${CLAUDE_PLUGIN_ROOT}/lib/commands/wake.sh" $scope
+```
 
 If it printed `OK_PROJECT`, tell the user:
 ```

@@ -1,6 +1,6 @@
 {
   "name": "bonsai",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Silent observer that surfaces high-signal observations between turns.",
   "author": {
     "name": "Ferdinando Bonsegna",

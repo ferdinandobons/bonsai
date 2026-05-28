@@ -1,17 +1,14 @@
 ---
 name: rest
 description: Stop Bonsai for this project (history is preserved)
-allowed-tools:
-  - Bash
+allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/rest.sh:*)"]
 ---
 
-The user has invoked `/bonsai:rest` in $CLAUDE_PROJECT_DIR.
+The user has invoked `/bonsai:rest` in the current project.
 
-!`bash -c '
-  source "$CLAUDE_PLUGIN_ROOT/lib/whitelist.sh"
-  bonsai_whitelist_remove "$CLAUDE_PROJECT_DIR"
-  echo "OK"
-'`
+```!
+"${CLAUDE_PLUGIN_ROOT}/lib/commands/rest.sh"
+```
 
 Print to the user:
 

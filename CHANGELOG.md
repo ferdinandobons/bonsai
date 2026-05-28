@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.1.5] — 2026-05-28
+
+### Fixed
+- **Slash commands now work**. Previously `/bonsai:tend` and every other
+  `/bonsai:*` command failed with `bash: /lib/common.sh: No such file or
+  directory` because Claude Code did not expand `$CLAUDE_PLUGIN_ROOT` /
+  `$CLAUDE_PROJECT_DIR` when the inline `!`bash -c '...'` form was used.
+  All ten commands now invoke an extracted script under
+  `lib/commands/<name>.sh` via the executable block-fence
+  `` ```! `` form with `${CLAUDE_PLUGIN_ROOT}` (braces), matching the
+  pattern used by `claude-plugins-official/ralph-loop`.
+
+### Changed
+- Each command's `allowed-tools` now declares the specific script path
+  (e.g. `Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/tend.sh:*)`) instead of
+  the generic `Bash`, so the auto-mode classifier recognises the call as
+  plugin-owned and stops blocking it.
+- Removed `$CLAUDE_PROJECT_DIR` interpolations from prose lines in
+  `.md` files — the preprocessor never expanded them, leaving the literal
+  token in messages shown to the model.
+
 ## [0.1.3] — 2026-05-28
 
 ### Added

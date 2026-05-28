@@ -5,22 +5,16 @@ argument-hint: "<id>"
 arguments: [id]
 allowed-tools:
   - Read
-  - Bash
+  - Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/discuss.sh:*)
 ---
 
 You are now discussing a Bonsai observation in this session.
 
 The observation file content follows:
 
-!`bash -c '
-  source "$CLAUDE_PLUGIN_ROOT/lib/branches.sh"
-  f="$(bonsai_branches_find_by_id "$CLAUDE_PROJECT_DIR" "$1")"
-  if [ -z "$f" ]; then
-    echo "ERR: observation $1 not found"
-    exit 0
-  fi
-  cat "$f"
-' _ "$id"`
+```!
+"${CLAUDE_PLUGIN_ROOT}/lib/commands/discuss.sh" $id
+```
 
 Help the user think through this. Do not jump to a solution — first surface
 what they might be missing, then together decide whether to act on it, modify

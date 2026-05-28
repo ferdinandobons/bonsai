@@ -157,7 +157,8 @@ main() {
   # transcript.
   local git_diff=""
   if git -C "$cwd" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    git_diff="$(git -C "$cwd" diff HEAD 2>/dev/null | head -c 60000)"
+    # Exclude .claude/bonsai (gardener bookkeeping) — consistent with signal.sh.
+    git_diff="$(git -C "$cwd" diff HEAD -- . ':!.claude/bonsai' 2>/dev/null | head -c 60000)"
   fi
 
   local prompt_input

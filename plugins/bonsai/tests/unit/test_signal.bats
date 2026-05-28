@@ -45,6 +45,18 @@ init_repo() {
   [ "$before" != "$(bonsai_signal_diff_hash "$REPO")" ]
 }
 
+@test "signal: changes inside .claude/bonsai do not affect the hash" {
+  # The gardener writes its own bookkeeping under .claude/bonsai; that must not
+  # register as a "code changed" signal, or the gardener would self-trigger the
+  # short cadence on every run.
+  ( cd "$REPO" && git init -q && git config user.email t@t && git config user.name t \
+    && mkdir -p .claude/bonsai && printf 'a\n' > f.txt && printf 'x\n' > .claude/bonsai/state.json \
+    && git add -A && git commit -qm init )
+  local before; before="$(bonsai_signal_diff_hash "$REPO")"
+  ( cd "$REPO" && printf 'changed\n' > .claude/bonsai/state.json )   # tracked file under .claude/bonsai
+  [ "$before" = "$(bonsai_signal_diff_hash "$REPO")" ]
+}
+
 @test "signal: diff_stat is empty for a clean/non-git dir" {
   run bonsai_signal_diff_stat "$REPO"
   [ "$status" -eq 0 ]

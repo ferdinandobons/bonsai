@@ -1,17 +1,14 @@
 ---
 name: gardener
 description: Bonsai's silent observer. Wakes after each session turn, auto-selects a lens (technical/strategic/workflow), emits 0–3 high-signal observations, writes them to .claude/bonsai/branches/, and exits. Dispatched by stop.sh after all gates pass. Never edits user source code.
-disable-model-invocation: true
-allowed-tools:
-  - mcp__ccd_session_mgmt__search_session_transcripts
+tools:
   - Bash
   - Read
   - Grep
   - Glob
   - Write
-  - mcp__ccd_session__spawn_task
-  - PushNotification
 model: claude-sonnet-4-6
+max-turns: 8
 ---
 
 # Bonsai Gardener — System Prompt

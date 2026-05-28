@@ -17,3 +17,8 @@ coverage/
 
 # Node (if anyone adds tooling later)
 node_modules/
+
+# Bonsai's own runtime state when dogfooding this repo (per-user data,
+# not source). Each watched project decides whether to commit or ignore
+# its .claude/bonsai/ — for the Bonsai dev repo itself, always ignore.
+.claude/

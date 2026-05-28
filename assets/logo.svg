@@ -1,0 +1,42 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bonsai logo">
+  <defs>
+    <radialGradient id="logoLeafGlow" cx="50%" cy="50%">
+      <stop offset="0%" stop-color="#a8d49a" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#a8d49a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Transparent background: works on light + dark surfaces -->
+
+  <g transform="translate(128, 168)">
+    <!-- Soft glow behind the detaching leaf -->
+    <circle cx="88" cy="-58" r="40" fill="url(#logoLeafGlow)"/>
+
+    <!-- Pot -->
+    <path d="M -64 62 L -56 96 L 56 96 L 64 62 Z" fill="#6b4423"/>
+    <path d="M -64 62 L 64 62 L 56 70 L -56 70 Z" fill="#8b5a2b"/>
+
+    <!-- Trunk + branches -->
+    <path d="M 0 62 Q -12 28 -4 -18 Q 8 -52 -8 -88" stroke="#4a3018" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M -4 -18 Q 6 -30 18 -44" stroke="#4a3018" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <path d="M -6 -62 Q -20 -70 -34 -62" stroke="#4a3018" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+
+    <!-- Foliage clusters -->
+    <ellipse cx="-32" cy="-62" rx="32" ry="23" fill="#5c8e4a"/>
+    <ellipse cx="24" cy="-74" rx="36" ry="25" fill="#4a7c3a"/>
+    <ellipse cx="-10" cy="-94" rx="26" ry="19" fill="#3d6b2e"/>
+    <ellipse cx="34" cy="-50" rx="24" ry="17" fill="#5c8e4a"/>
+    <ellipse cx="-38" cy="-32" rx="20" ry="14" fill="#4a7c3a"/>
+    <ellipse cx="34" cy="-80" rx="11" ry="7" fill="#7ba05b" opacity="0.6"/>
+
+    <!-- A single leaf detaching: the surfaced observation -->
+    <g opacity="0.4">
+      <ellipse cx="60" cy="-52" rx="4" ry="2" fill="#7ba05b" transform="rotate(55 60 -52)"/>
+      <ellipse cx="74" cy="-58" rx="3" ry="1.5" fill="#7ba05b" transform="rotate(65 74 -58)"/>
+    </g>
+    <g transform="translate(88, -58) rotate(50)">
+      <ellipse cx="0" cy="0" rx="7" ry="3.6" fill="#7ba05b"/>
+      <line x1="-7" y1="0" x2="7" y2="0" stroke="#4a7c3a" stroke-width="0.6"/>
+    </g>
+  </g>
+</svg>

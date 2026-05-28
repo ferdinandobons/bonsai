@@ -1,6 +1,8 @@
+<img src="assets/logo.svg" width="100" align="right" alt="Bonsai logo" />
+
 # Bonsai
 
-![Bonsai: a patient observer for your Claude Code sessions](assets/hero.svg)
+![Bonsai: from the active approach to the proactive approach](assets/hero.svg)
 
 **Every other AI coding assistant waits for you to ask. Bonsai watches while you work.**
 

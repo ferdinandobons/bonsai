@@ -1,72 +1,108 @@
-<svg viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bonsai: a patient observer for your Claude Code sessions">
+<svg viewBox="0 0 900 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bonsai: from the active approach to the proactive approach for AI-assisted coding">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#f7f3ea"/>
       <stop offset="100%" stop-color="#ede5d4"/>
     </linearGradient>
     <radialGradient id="leafGlow" cx="50%" cy="50%">
-      <stop offset="0%" stop-color="#a8d49a" stop-opacity="0.45"/>
+      <stop offset="0%" stop-color="#a8d49a" stop-opacity="0.5"/>
       <stop offset="100%" stop-color="#a8d49a" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <rect width="800" height="400" fill="url(#bgGrad)"/>
+  <rect width="900" height="480" fill="url(#bgGrad)"/>
 
-  <!-- LEFT: the old way (you ask, repeatedly) -->
-  <text x="60" y="76" font-family="Helvetica, sans-serif" font-size="11" fill="#8b7355" font-weight="700" letter-spacing="3">YOU ASK</text>
-  <text x="60" y="94" font-family="Helvetica, sans-serif" font-size="10.5" fill="#a89887" font-style="italic">every other coding assistant</text>
+  <!-- Top header -->
+  <text x="450" y="40" font-family="Helvetica, sans-serif" font-size="12" fill="#8b7355" text-anchor="middle" letter-spacing="3" font-weight="600">TWO APPROACHES TO AI-ASSISTED CODING</text>
 
-  <g transform="translate(70, 130)" opacity="0.42" font-family="JetBrains Mono, Menlo, monospace" font-size="13" fill="#5d4e3c">
-    <text x="0" y="0">&gt; help?</text>
-    <text x="22" y="26">&gt; explain</text>
-    <text x="6" y="52">&gt; fix this</text>
-    <text x="28" y="78">&gt; refactor?</text>
-    <text x="2" y="104">&gt; what now?</text>
-    <text x="34" y="130">&gt; again?</text>
+  <!-- ============ LEFT CARD: ACTIVE ============ -->
+  <g transform="translate(50, 70)">
+    <!-- Card frame -->
+    <rect x="0" y="0" width="380" height="310" rx="8" ry="8" fill="#ffffff" fill-opacity="0.5" stroke="#c9b89c" stroke-width="1"/>
+
+    <!-- Label -->
+    <text x="20" y="34" font-family="Helvetica, sans-serif" font-size="13" fill="#8b6f47" font-weight="700" letter-spacing="2.5">ACTIVE APPROACH</text>
+    <text x="20" y="52" font-family="Helvetica, sans-serif" font-size="11" fill="#a89887" font-style="italic">how every other coding assistant works</text>
+
+    <!-- Icon: cluster of speech bubbles with question marks -->
+    <g transform="translate(190, 130)" opacity="0.8">
+      <!-- Bubble 1 -->
+      <path d="M -50 -25 q -8 0 -8 8 v 20 q 0 8 8 8 h 50 q 8 0 8 -8 v -20 q 0 -8 -8 -8 z m 22 28 l -10 12 v -12 z" fill="#d4b896"/>
+      <text x="-25" y="-2" font-family="Helvetica, sans-serif" font-size="18" fill="#5a3818" text-anchor="middle" font-weight="700">?</text>
+      <!-- Bubble 2 -->
+      <path d="M 5 5 q -8 0 -8 8 v 18 q 0 8 8 8 h 45 q 8 0 8 -8 v -18 q 0 -8 -8 -8 z m 20 26 l -10 12 v -12 z" fill="#d4b896" opacity="0.85"/>
+      <text x="27" y="29" font-family="Helvetica, sans-serif" font-size="16" fill="#5a3818" text-anchor="middle" font-weight="700">?</text>
+      <!-- Bubble 3 -->
+      <path d="M -40 35 q -8 0 -8 8 v 16 q 0 8 8 8 h 40 q 8 0 8 -8 v -16 q 0 -8 -8 -8 z m 18 24 l -10 12 v -12 z" fill="#d4b896" opacity="0.7"/>
+      <text x="-20" y="56" font-family="Helvetica, sans-serif" font-size="14" fill="#5a3818" text-anchor="middle" font-weight="700">?</text>
+    </g>
+
+    <!-- Description bullets -->
+    <g font-family="Helvetica, sans-serif" font-size="13" fill="#5d4e3c">
+      <text x="20" y="225">You ask. The assistant answers.</text>
+      <text x="20" y="248">You ask again. And again.</text>
+      <text x="20" y="282" fill="#8b6f47" font-style="italic">It only catches what you remember to look for.</text>
+    </g>
   </g>
 
-  <!-- Center divider -->
-  <line x1="380" y1="105" x2="380" y2="320" stroke="#c9b89c" stroke-width="0.5" stroke-dasharray="3 5" opacity="0.7"/>
-
-  <!-- RIGHT: the bonsai (it observes) -->
-  <text x="420" y="76" font-family="Helvetica, sans-serif" font-size="11" fill="#4a7c3a" font-weight="700" letter-spacing="3">IT OBSERVES</text>
-  <text x="420" y="94" font-family="Helvetica, sans-serif" font-size="10.5" fill="#6b8b5a" font-style="italic">Bonsai, a different kind of plugin</text>
-
-  <!-- Soft glow where the surfaced observation lands -->
-  <circle cx="690" cy="195" r="42" fill="url(#leafGlow)"/>
-
-  <g transform="translate(540, 255)">
-    <!-- Pot -->
-    <path d="M -58 60 L -52 92 L 52 92 L 58 60 Z" fill="#6b4423"/>
-    <path d="M -58 60 L 58 60 L 52 66 L -52 66 Z" fill="#8b5a2b"/>
-
-    <!-- Trunk and main branches -->
-    <path d="M 0 60 Q -10 28 -3 -12 Q 6 -42 -6 -72" stroke="#4a3018" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <path d="M -3 -12 Q 4 -22 14 -34" stroke="#4a3018" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <path d="M -5 -50 Q -16 -56 -28 -50" stroke="#4a3018" stroke-width="3" fill="none" stroke-linecap="round"/>
-
-    <!-- Foliage clusters -->
-    <ellipse cx="-26" cy="-50" rx="28" ry="20" fill="#5c8e4a" opacity="0.96"/>
-    <ellipse cx="22" cy="-62" rx="32" ry="22" fill="#4a7c3a" opacity="0.96"/>
-    <ellipse cx="-8" cy="-78" rx="24" ry="17" fill="#3d6b2e" opacity="0.96"/>
-    <ellipse cx="30" cy="-42" rx="22" ry="15" fill="#5c8e4a" opacity="0.92"/>
-    <ellipse cx="-32" cy="-26" rx="18" ry="12" fill="#4a7c3a" opacity="0.88"/>
-
-    <!-- Subtle highlight on the top-right foliage -->
-    <ellipse cx="28" cy="-66" rx="10" ry="6" fill="#7ba05b" opacity="0.55"/>
+  <!-- Center separator with VS -->
+  <g transform="translate(450, 225)">
+    <line x1="0" y1="-100" x2="0" y2="100" stroke="#c9b89c" stroke-width="0.5" stroke-dasharray="3 5" opacity="0.7"/>
+    <circle cx="0" cy="0" r="22" fill="#f7f3ea" stroke="#c9b89c" stroke-width="1"/>
+    <text x="0" y="5" font-family="Georgia, serif" font-size="13" fill="#8b7355" text-anchor="middle" font-style="italic">vs</text>
   </g>
 
-  <!-- A single leaf detaching: the surfaced observation -->
-  <g opacity="0.35">
-    <ellipse cx="640" cy="183" rx="3" ry="1.5" fill="#7ba05b" transform="rotate(60 640 183)"/>
-    <ellipse cx="662" cy="190" rx="2.5" ry="1.2" fill="#7ba05b" transform="rotate(70 662 190)"/>
-  </g>
-  <g transform="translate(690, 195) rotate(48)">
-    <ellipse cx="0" cy="0" rx="6" ry="3" fill="#7ba05b"/>
-    <line x1="-6" y1="0" x2="6" y2="0" stroke="#4a7c3a" stroke-width="0.5"/>
+  <!-- ============ RIGHT CARD: PROACTIVE ============ -->
+  <g transform="translate(470, 70)">
+    <!-- Card frame -->
+    <rect x="0" y="0" width="380" height="310" rx="8" ry="8" fill="#ffffff" fill-opacity="0.65" stroke="#9ab885" stroke-width="1.5"/>
+
+    <!-- Label -->
+    <text x="20" y="34" font-family="Helvetica, sans-serif" font-size="13" fill="#4a7c3a" font-weight="700" letter-spacing="2.5">PROACTIVE APPROACH</text>
+    <text x="20" y="52" font-family="Helvetica, sans-serif" font-size="11" fill="#6b8b5a" font-style="italic">how Bonsai works</text>
+
+    <!-- Bonsai illustration centered in the icon area -->
+    <g transform="translate(190, 165)">
+      <!-- Soft glow behind the falling leaf -->
+      <circle cx="60" cy="-30" r="32" fill="url(#leafGlow)"/>
+
+      <!-- Pot -->
+      <path d="M -52 50 L -47 78 L 47 78 L 52 50 Z" fill="#6b4423"/>
+      <path d="M -52 50 L 52 50 L 47 56 L -47 56 Z" fill="#8b5a2b"/>
+
+      <!-- Trunk + branches -->
+      <path d="M 0 50 Q -10 22 -3 -16 Q 6 -44 -6 -72" stroke="#4a3018" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      <path d="M -3 -16 Q 4 -26 14 -38" stroke="#4a3018" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M -5 -52 Q -16 -58 -28 -52" stroke="#4a3018" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+      <!-- Foliage clusters -->
+      <ellipse cx="-26" cy="-52" rx="26" ry="19" fill="#5c8e4a"/>
+      <ellipse cx="20" cy="-62" rx="30" ry="21" fill="#4a7c3a"/>
+      <ellipse cx="-8" cy="-78" rx="22" ry="16" fill="#3d6b2e"/>
+      <ellipse cx="28" cy="-42" rx="20" ry="14" fill="#5c8e4a"/>
+      <ellipse cx="-32" cy="-28" rx="16" ry="11" fill="#4a7c3a"/>
+      <ellipse cx="28" cy="-68" rx="9" ry="5.5" fill="#7ba05b" opacity="0.6"/>
+
+      <!-- A single leaf detaching: the observation -->
+      <g opacity="0.4">
+        <ellipse cx="42" cy="-44" rx="3" ry="1.5" fill="#7ba05b" transform="rotate(55 42 -44)"/>
+        <ellipse cx="52" cy="-37" rx="2.5" ry="1.2" fill="#7ba05b" transform="rotate(65 52 -37)"/>
+      </g>
+      <g transform="translate(62, -30) rotate(50)">
+        <ellipse cx="0" cy="0" rx="5" ry="2.7" fill="#7ba05b"/>
+        <line x1="-5" y1="0" x2="5" y2="0" stroke="#4a7c3a" stroke-width="0.5"/>
+      </g>
+    </g>
+
+    <!-- Description bullets -->
+    <g font-family="Helvetica, sans-serif" font-size="13" fill="#3d5c2e">
+      <text x="20" y="225">It watches your whole session in silence.</text>
+      <text x="20" y="248">Surfaces only what matters. Stays quiet otherwise.</text>
+      <text x="20" y="282" fill="#4a7c3a" font-style="italic">It catches what you would have missed.</text>
+    </g>
   </g>
 
-  <!-- Wordmark + tagline -->
-  <text x="400" y="365" font-family="Georgia, 'Times New Roman', serif" font-size="36" fill="#3d2f1f" font-weight="400" text-anchor="middle" letter-spacing="2">Bonsai</text>
-  <text x="400" y="388" font-family="Helvetica, sans-serif" font-size="11" fill="#7a6a52" text-anchor="middle" letter-spacing="2.4">A PATIENT OBSERVER FOR YOUR CLAUDE CODE SESSIONS</text>
+  <!-- Wordmark + tagline at the bottom -->
+  <text x="450" y="430" font-family="Georgia, 'Times New Roman', serif" font-size="34" fill="#3d2f1f" font-weight="400" text-anchor="middle" letter-spacing="2.5">Bonsai</text>
+  <text x="450" y="456" font-family="Helvetica, sans-serif" font-size="11" fill="#7a6a52" text-anchor="middle" letter-spacing="2.4">A PATIENT OBSERVER FOR YOUR CLAUDE CODE SESSIONS</text>
 </svg>

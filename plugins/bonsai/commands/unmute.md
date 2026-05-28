@@ -9,7 +9,7 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/unmute.sh:*)"]
 The user has invoked `/bonsai:unmute $scope` in the current project.
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/lib/commands/unmute.sh" $scope
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/unmute.sh" $scope
 ```
 
 If it printed `OK_PROJECT`, tell the user:

@@ -156,4 +156,4 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report vulnerabil
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.2.3](https://github.com/ferdinandobons/bonsai/releases/tag/v0.2.3).
+See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.2.4](https://github.com/ferdinandobons/bonsai/releases/tag/v0.2.4).

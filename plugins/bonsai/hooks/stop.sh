@@ -6,6 +6,12 @@
 # Spec §9: this hook must NEVER disturb the session. Any error path exits 0.
 
 LIB_DIR="${CLAUDE_PLUGIN_ROOT:-${BASH_SOURCE[0]%/*}/..}/lib"
+# CC exports CLAUDE_PLUGIN_DATA to hook processes per the plugins
+# reference docs, but provide a defensive fallback for older CC versions
+# or direct invocation (tests, manual debugging) — must match the canonical
+# path used by the slash commands' bootstrap.
+: "${CLAUDE_PLUGIN_DATA:=$HOME/.claude/plugins/data/bonsai-bonsai}"
+export CLAUDE_PLUGIN_DATA
 # shellcheck disable=SC1091
 source "$LIB_DIR/common.sh"
 # shellcheck disable=SC1091

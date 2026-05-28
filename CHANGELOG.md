@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.2.4] — 2026-05-28
+
+### Fixed
+- **Critical: slash commands wrote state to `/tmp/bonsai-no-data/` instead
+  of the canonical plugin-data path.** Per the
+  [Claude Code plugins reference](https://code.claude.com/docs/en/plugins-reference#environment-variables),
+  CC exports `${CLAUDE_PLUGIN_DATA}` to hook processes and MCP/LSP
+  subprocesses, but **not** to slash command Bash() subprocesses. Bonsai
+  relied on the variable being available in both contexts. Result: after
+  `/bonsai:start`, the whitelist landed in the `/tmp` fallback, while the
+  Stop hook (which does receive the variable) read the correct path,
+  found no whitelist, and silently exited. **Bonsai appeared installed
+  and started but never actually observed anything.**
+
+  Two-layer fix:
+  1. All 10 invoking `.md` commands now pass `CLAUDE_PLUGIN_DATA` as an
+     env prefix in the block-fence command, so CC substitutes the value
+     and the subprocess inherits it (CC-canonical approach).
+  2. `lib/commands/_bootstrap.sh` and `hooks/stop.sh` now define a
+     defensive fallback to `~/.claude/plugins/data/bonsai-bonsai/` so
+     direct invocation (tests, debugging) and any future CC behavior
+     change still work.
+
+  No user action required after upgrading. Existing state in
+  `/tmp/bonsai-no-data/projects.json` (if any) can be safely moved to
+  `~/.claude/plugins/data/bonsai-bonsai/projects.json`, or just re-run
+  `/bonsai:start` on each watched project to recreate it.
+
 ## [0.2.3] — 2026-05-28
 
 ### Changed

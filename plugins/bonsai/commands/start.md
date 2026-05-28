@@ -8,7 +8,7 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/start.sh:*)"]
 The user has invoked `/bonsai:start` in the current project.
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/lib/commands/start.sh" $ARGUMENTS
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/start.sh" $ARGUMENTS
 ```
 
 Print this welcome message to the user verbatim:

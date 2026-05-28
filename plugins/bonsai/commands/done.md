@@ -9,7 +9,7 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/done.sh:*)"]
 The user has invoked `/bonsai:done $id` in the current project.
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/lib/commands/done.sh" $id
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/done.sh" $id
 ```
 
 Tell the user:

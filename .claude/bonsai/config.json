@@ -1,0 +1,11 @@
+{
+  "__version": 1,
+  "gardener_model": "claude-sonnet-4-6",
+  "throttle_min_minutes": 5,
+  "quota": {"runs_per_day": 10, "observations_per_day": 20},
+  "lenses_enabled": ["technical","strategic","workflow"],
+  "auto_archive_kept_after_days": 14,
+  "auto_archive_trimmed_after_days": 7,
+  "push_notifications_enabled": true,
+  "max_observations_per_run": 3
+}

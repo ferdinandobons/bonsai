@@ -7,7 +7,7 @@ allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/stop.sh:*)"]
 The user has invoked `/bonsai:stop` in the current project.
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/lib/commands/stop.sh"
+CLAUDE_PLUGIN_DATA="${CLAUDE_PLUGIN_DATA}" "${CLAUDE_PLUGIN_ROOT}/lib/commands/stop.sh"
 ```
 
 Print to the user:

@@ -112,6 +112,9 @@ bonsai_branches_write() {
       printf '\n'
     fi
   } > "$file"
+  # Emit the resolved path so callers (gardener, tests) know where the
+  # branch was written without having to reconstruct the filename.
+  printf '%s' "$file"
 }
 
 # Read a single frontmatter field value.

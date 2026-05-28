@@ -20,6 +20,7 @@ if [ ! -f "$cfg" ]; then
   "__version": 1,
   "gardener_model": "claude-sonnet-4-6",
   "throttle_min_minutes": 5,
+  "throttle_idle_minutes": 20,
   "quota": {"runs_per_day": 10, "observations_per_day": 20},
   "lenses_enabled": ["technical","strategic","workflow"],
   "auto_archive_kept_after_days": 14,

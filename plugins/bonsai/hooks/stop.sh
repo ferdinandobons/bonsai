@@ -23,6 +23,8 @@ source "$LIB_DIR/quota.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/migrate.sh"
 # shellcheck disable=SC1091
+source "$LIB_DIR/signal.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/lock.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/dispatch.sh"
@@ -62,9 +64,25 @@ main() {
   # 3. Schema migration (no-op v1)
   bonsai_migrate_run_all "$cwd"
 
-  # 4. Throttle gate
-  if ! CLAUDE_PROJECT_DIR="$cwd" bonsai_quota_throttle_ok "$cwd"; then
-    bonsai_log INFO "stop: throttled, skip"
+  # 4. Adaptive throttle. If code changed since the last run, use the short
+  # cadence; if nothing changed (idle / conversational turn), use the longer
+  # idle cadence — strategic/workflow observations are sampled, never dropped.
+  local cur_diff_hash; cur_diff_hash="$(bonsai_signal_diff_hash "$cwd")"
+  local last_diff_hash; last_diff_hash="$(bonsai_json_get "$cwd/.claude/bonsai/state.json" '.last_diff_hash')"
+  local throttle_override=""
+  # `-n` guard: a blank hash (both hash tools missing) must NOT match a blank
+  # last_diff_hash and wrongly trigger the idle cadence.
+  if [[ -n "$cur_diff_hash" && "$cur_diff_hash" == "$last_diff_hash" ]]; then
+    local idle_minutes=20
+    local cfg_idle="$cwd/.claude/bonsai/config.json"
+    if [[ -f "$cfg_idle" ]]; then
+      local iv; iv="$(jq -r '.throttle_idle_minutes // 20' "$cfg_idle" 2>/dev/null)"
+      [[ "$iv" =~ ^[0-9]+$ ]] && idle_minutes="$iv"
+    fi
+    throttle_override="$idle_minutes"
+  fi
+  if ! CLAUDE_PROJECT_DIR="$cwd" bonsai_quota_throttle_ok "$cwd" "$throttle_override"; then
+    bonsai_log INFO "stop: throttled (override=${throttle_override:-config}), skip"
     exit 0
   fi
 
@@ -84,18 +102,21 @@ main() {
     exit 0
   fi
 
-  # 6. Update last_run + record run event BEFORE spawning so a second Stop hook
+  # 6. Capture the PREVIOUS last_run_iso BEFORE we overwrite it — the gardener's
+  # observation window starts at the prior run, not now.
+  local state_file="$cwd/.claude/bonsai/state.json"
+  local last_run_iso; last_run_iso="$(bonsai_json_get "$state_file" '.last_run_iso')"
+  [[ -z "$last_run_iso" ]] && last_run_iso="1970-01-01T00:00:00Z"
+
+  # Update last_run + record run event BEFORE spawning so a second Stop hook
   # firing immediately (e.g. CC retrying) sees a fresh last_run and the
   # throttle gate blocks it.
-  bonsai_quota_update_last_run "$cwd"
+  bonsai_quota_update_last_run "$cwd" "$cur_diff_hash"
   bonsai_quota_record_event "run" "$cwd"
 
   # 7. Build the prompt input for the gardener
   local now; now="$(bonsai_now_iso)"
-  local state_file="$cwd/.claude/bonsai/state.json"
   local hashes; hashes="$(jq -c '.dedup_hashes // []' "$state_file" 2>/dev/null || printf '[]')"
-  local last_run_iso
-  last_run_iso="$(jq -r '.last_run_iso // "1970-01-01T00:00:00Z"' "$state_file" 2>/dev/null || printf '1970-01-01T00:00:00Z')"
   local trimmed_md="$cwd/.claude/bonsai/trimmed.md"
   local trimmed_content=""
   [[ -f "$trimmed_md" ]] && trimmed_content="$(cat "$trimmed_md")"

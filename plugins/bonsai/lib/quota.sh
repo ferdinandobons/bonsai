@@ -69,6 +69,7 @@ bonsai_quota_count_events_24h() {
 # Per-project throttle. Exit 0 if min interval has passed, 1 otherwise.
 bonsai_quota_throttle_ok() {
   local project_dir="$1"
+  local override="${2:-}"
   local state; state="$(_bonsai_state_file "$project_dir")"
   local cfg; cfg="$(_bonsai_config_file "$project_dir")"
   local min_minutes=5
@@ -76,6 +77,8 @@ bonsai_quota_throttle_ok() {
     local v; v="$(bonsai_json_get "$cfg" '.throttle_min_minutes')"
     [[ -n "$v" && "$v" =~ ^[0-9]+$ ]] && min_minutes="$v"
   fi
+  # Explicit override (adaptive throttle from stop.sh) wins over config.
+  [[ "$override" =~ ^[0-9]+$ ]] && min_minutes="$override"
   local now_epoch; now_epoch="$(date -u +%s)"
   local last_epoch=0
   if [[ -f "$state" ]]; then
@@ -135,21 +138,26 @@ bonsai_quota_caps_ok() {
 
 bonsai_quota_update_last_run() {
   local project_dir="$1"
+  local diff_hash="${2:-}"
   local state; state="$(_bonsai_state_file "$project_dir")"
   bonsai_ensure_dir "$(dirname "$state")" || return 1
   local now; now="$(bonsai_now_iso)"
   # Use `if`-guarded command so callers with `set -e` / `set -E` don't blow up
-  # when jq legitimately fails on a corrupt state.json.
+  # when jq legitimately fails on a corrupt state.json. diff_hash is recorded
+  # only when provided (the adaptive-throttle signal from stop.sh).
   local updated=""
   if [[ -f "$state" ]]; then
-    if ! updated="$(jq --arg t "$now" '.last_run_iso = $t' "$state" 2>/dev/null)"; then
+    if ! updated="$(jq --arg t "$now" --arg h "$diff_hash" \
+        '.last_run_iso = $t | (if $h != "" then .last_diff_hash = $h else . end)' \
+        "$state" 2>/dev/null)"; then
       updated=""
     fi
   fi
   if [[ -z "$updated" ]]; then
     [[ -f "$state" ]] && bonsai_log WARN "quota_update_last_run: corrupt or missing state.json, rebuilding"
     local fresh
-    fresh="$(jq -n --arg t "$now" '{"__version":1,"last_run_iso":$t,"dedup_hashes":[]}')"
+    fresh="$(jq -n --arg t "$now" --arg h "$diff_hash" \
+      '{"__version":1,"last_run_iso":$t,"dedup_hashes":[]} + (if $h != "" then {"last_diff_hash":$h} else {} end)')"
     bonsai_json_write "$state" "$fresh"
   else
     bonsai_json_write "$state" "$updated"

@@ -24,6 +24,12 @@ run_config() { bash "$BONSAI_PLUGIN_ROOT/lib/commands/config.sh" "$@"; }
   [ "$(jq -r '.gardener_model' "$cfg")" = "claude-opus-4-8" ]
 }
 
+@test "config: throttle_idle_minutes is an accepted key" {
+  run run_config throttle_idle_minutes 30
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.throttle_idle_minutes' "$cfg")" = "30" ]
+}
+
 @test "config: unknown key is rejected, exits 0, config untouched" {
   run run_config bogus_key 5
   [ "$status" -eq 0 ]

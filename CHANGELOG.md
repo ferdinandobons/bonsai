@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
+### Added
+- **Adaptive throttle (Stage 0 of the "smarter gardener" work).** `stop.sh` now
+  derives a cheap signal of whether the working tree changed since the last run
+  (`lib/signal.sh`: hash of `git diff HEAD` + untracked files). If code changed,
+  the gardener uses the short cadence (`throttle_min_minutes`, default 5); if
+  nothing changed (idle/conversational turn), it uses the longer
+  `throttle_idle_minutes` (default 20, configurable via `/bonsai:config`).
+  strategic/workflow observations are still sampled, never dropped — this cuts
+  the ~350k-token cost of running on substance-free turns without going
+  code-only. `bonsai_quota_throttle_ok` gained an optional override arg.
+
+### Fixed
+- **The gardener was always told `last_run_iso = now`.** `stop.sh` read
+  `last_run_iso` *after* `update_last_run` had already overwritten it, so the
+  gardener's observation window was effectively zero-length every run. It now
+  captures the previous timestamp before updating. (`hooks/stop.sh`)
 
 ## [0.4.1] — 2026-05-28
 

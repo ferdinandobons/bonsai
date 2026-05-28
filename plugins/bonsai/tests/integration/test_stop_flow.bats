@@ -114,6 +114,41 @@ EOF
   [ "$iso" = "1970-01-01T00:00:00Z" ]
 }
 
+@test "stop: idle (no code change since last run) uses the longer idle throttle" {
+  fixture_projects_json "$CLAUDE_PROJECT_DIR"
+  fixture_config_json
+  local ten_min_ago; ten_min_ago="$(date -u -v-10M +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '10 min ago' +%Y-%m-%dT%H:%M:%SZ)"
+  fixture_state_json "$ten_min_ago"
+  ( cd "$CLAUDE_PROJECT_DIR" && git init -q && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init )
+  # Record the current diff hash as last_diff_hash → "nothing changed since last run".
+  source "$BONSAI_PLUGIN_ROOT/lib/common.sh"; source "$BONSAI_PLUGIN_ROOT/lib/signal.sh"
+  local h; h="$(bonsai_signal_diff_hash "$CLAUDE_PROJECT_DIR")"
+  jq --arg h "$h" '.last_diff_hash=$h' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json" > "$BATS_TEST_TMPDIR/s" \
+    && mv "$BATS_TEST_TMPDIR/s" "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
+  local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
+  run run_stop_hook_with_input "$input"
+  [ "$status" -eq 0 ]
+  # idle throttle (20m) not elapsed (only 10m) → skipped → last_run unchanged
+  [ "$(jq -r '.last_run_iso' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json")" = "$ten_min_ago" ]
+}
+
+@test "stop: gardener receives the PREVIOUS last_run_iso, not the freshly-updated one" {
+  fixture_projects_json "$CLAUDE_PROJECT_DIR"
+  local prev="2020-01-01T00:00:00Z"
+  fixture_state_json "$prev"
+  local stub_dir="$BATS_TEST_TMPDIR/stub-bin"; mkdir -p "$stub_dir"
+  cat > "$stub_dir/claude" <<EOF
+#!/usr/bin/env bash
+cat - > "$BATS_TEST_TMPDIR/g-stdin.txt"
+EOF
+  chmod +x "$stub_dir/claude"; export PATH="$stub_dir:$PATH"
+  local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
+  run_stop_hook_with_input "$input"
+  for i in $(seq 1 50); do [ -s "$BATS_TEST_TMPDIR/g-stdin.txt" ] && break; sleep 0.1; done
+  # The gardener's observation window must start at the previous run, not "now".
+  [ "$(jq -r '.last_run_iso' "$BATS_TEST_TMPDIR/g-stdin.txt")" = "$prev" ]
+}
+
 @test "stop: malformed stdin JSON is silently ignored" {
   run bash -c 'echo "{not json" | bash "$BONSAI_PLUGIN_ROOT/hooks/stop.sh"'
   [ "$status" -eq 0 ]

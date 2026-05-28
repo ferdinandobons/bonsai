@@ -11,6 +11,26 @@ setup() {
 }
 teardown() { teardown_sandbox; }
 
+@test "quota: throttle_ok honors an explicit min_minutes override" {
+  fixture_state_json "$(date -u +%Y-%m-%dT%H:%M:%SZ)"   # last_run = now
+  run bonsai_quota_throttle_ok "$CLAUDE_PROJECT_DIR" 1   # 1-min wait, not elapsed
+  [ "$status" -ne 0 ]
+  run bonsai_quota_throttle_ok "$CLAUDE_PROJECT_DIR" 0   # 0-min wait → always ok
+  [ "$status" -eq 0 ]
+}
+
+@test "quota: update_last_run stores an optional diff hash" {
+  bonsai_quota_update_last_run "$CLAUDE_PROJECT_DIR" "deadbeef"
+  local h; h="$(jq -r '.last_diff_hash' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json")"
+  [ "$h" = "deadbeef" ]
+}
+
+@test "quota: update_last_run without a hash leaves last_diff_hash absent" {
+  bonsai_quota_update_last_run "$CLAUDE_PROJECT_DIR"
+  local h; h="$(jq -r '.last_diff_hash // "ABSENT"' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json")"
+  [ "$h" = "ABSENT" ]
+}
+
 @test "quota: record_event creates quota.json with one entry" {
   bonsai_quota_record_event "run" "/foo"
   run jq -r '.events | length' "$CLAUDE_PLUGIN_DATA/quota.json"

@@ -15,6 +15,11 @@ cfg_val() { jq -r "$1" "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json"; }
   [ "$(cfg_val '.throttle_min_minutes')" = "5" ]
 }
 
+@test "start: default config includes throttle_idle_minutes" {
+  run_start
+  [ "$(cfg_val '.throttle_idle_minutes')" = "20" ]
+}
+
 @test "start: --throttle=10m sets 10 minutes" {
   run_start --throttle=10m
   [ "$(cfg_val '.throttle_min_minutes')" = "10" ]

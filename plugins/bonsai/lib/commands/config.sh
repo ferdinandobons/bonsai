@@ -6,7 +6,7 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/_bootstrap.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/common.sh"
 
-cfg="${CLAUDE_PROJECT_DIR}/.claude/bonsai/config.json"
+cfg="$(bonsai_config_file "${CLAUDE_PROJECT_DIR}")"
 key="$1"
 value="$2"
 

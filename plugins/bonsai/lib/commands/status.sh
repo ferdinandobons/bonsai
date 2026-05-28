@@ -27,7 +27,7 @@ p_obs=$(bonsai_quota_count_events_24h "observation" "$cwd")
 g_runs=$(bonsai_quota_count_events_24h "run")
 g_obs=$(bonsai_quota_count_events_24h "observation")
 
-cfg="$cwd/.claude/bonsai/config.json"
+cfg="$(bonsai_config_file "$cwd")"
 model="claude-sonnet-4-6"
 [ -f "$cfg" ] && model="$(jq -r '.gardener_model' "$cfg")"
 

@@ -9,8 +9,6 @@ source "${BASH_SOURCE[0]%/*}/common.sh"
 # shellcheck disable=SC1091
 source "${BASH_SOURCE[0]%/*}/branches.sh"
 
-_bonsai_config_file() { printf '%s/.claude/bonsai/config.json' "$1"; }
-
 # Purge transient plugin-data older than ttl_days: pre-sliced transcripts
 # (sliced/sliced-*.jsonl) and per-run gardener logs (logs/gardener-*.log).
 # Written once per run, never re-read, so they grow unbounded (MBs/day). The
@@ -26,9 +24,7 @@ bonsai_archive_purge_transient() {
   shopt -s nullglob
   for f in "$data_dir/sliced/"sliced-*.jsonl "$data_dir/logs/"gardener-*.log; do
     [[ -f "$f" ]] || continue
-    # Cross-platform mtime (see note in bonsai_archive_run): validate numeric.
-    mtime="$(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null || printf 0)"
-    [[ "$mtime" =~ ^[0-9]+$ ]] || mtime=0
+    mtime="$(bonsai_file_mtime_epoch "$f")"
     age=$(( now - mtime ))
     if (( age >= cutoff )); then
       rm -f "$f" 2>/dev/null \
@@ -41,7 +37,7 @@ bonsai_archive_purge_transient() {
 
 bonsai_archive_run() {
   local project_dir="$1"
-  local cfg; cfg="$(_bonsai_config_file "$project_dir")"
+  local cfg; cfg="$(bonsai_config_file "$project_dir")"
   local kept_days=14 trimmed_days=7 transient_ttl_days=7
   if [[ -f "$cfg" ]]; then
     local v
@@ -70,13 +66,7 @@ bonsai_archive_run() {
       trimmed) thr="$trimmed_days" ;;
       *) continue ;;
     esac
-    # Cross-platform mtime: try GNU stat -c first (Linux), then BSD stat -f
-    # (macOS). Order matters: on Linux, `stat -f` is a filesystem-info flag
-    # that succeeds AND prints multi-line garbage, which would break the
-    # arithmetic. Validate that mtime is purely numeric before use.
-    local mtime
-    mtime="$(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null || printf 0)"
-    [[ "$mtime" =~ ^[0-9]+$ ]] || mtime=0
+    local mtime; mtime="$(bonsai_file_mtime_epoch "$f")"
     local age_days=$(( (now - mtime) / 86400 ))
     if [[ "$age_days" -ge "$thr" ]]; then
       mv "$f" "$arc/"

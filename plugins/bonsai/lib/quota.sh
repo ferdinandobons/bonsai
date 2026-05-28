@@ -8,8 +8,6 @@ _BONSAI_QUOTA_SOURCED=1
 source "${BASH_SOURCE[0]%/*}/common.sh"
 
 _bonsai_quota_file() { printf '%s/quota.json' "${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}"; }
-_bonsai_state_file() { printf '%s/.claude/bonsai/state.json' "$1"; }
-_bonsai_config_file() { printf '%s/.claude/bonsai/config.json' "$1"; }
 
 _bonsai_quota_init_if_missing() {
   local file; file="$(_bonsai_quota_file)"
@@ -70,8 +68,8 @@ bonsai_quota_count_events_24h() {
 bonsai_quota_throttle_ok() {
   local project_dir="$1"
   local override="${2:-}"
-  local state; state="$(_bonsai_state_file "$project_dir")"
-  local cfg; cfg="$(_bonsai_config_file "$project_dir")"
+  local state; state="$(bonsai_state_file "$project_dir")"
+  local cfg; cfg="$(bonsai_config_file "$project_dir")"
   local min_minutes=5
   if [[ -f "$cfg" ]]; then
     local v; v="$(bonsai_json_get "$cfg" '.throttle_min_minutes')"
@@ -104,7 +102,7 @@ bonsai_quota_caps_ok() {
     bonsai_log WARN "caps_ok: CLAUDE_PROJECT_DIR unset or '/' — per-project caps will not match real events"
     project_dir="/"
   fi
-  local cfg; cfg="$(_bonsai_config_file "$project_dir")"
+  local cfg; cfg="$(bonsai_config_file "$project_dir")"
   local p_runs_cap=10 p_obs_cap=20
   local g_runs_cap=50 g_obs_cap=100
   if [[ -f "$cfg" ]]; then
@@ -139,7 +137,7 @@ bonsai_quota_caps_ok() {
 bonsai_quota_update_last_run() {
   local project_dir="$1"
   local diff_hash="${2:-}"
-  local state; state="$(_bonsai_state_file "$project_dir")"
+  local state; state="$(bonsai_state_file "$project_dir")"
   bonsai_ensure_dir "$(dirname "$state")" || return 1
   local now; now="$(bonsai_now_iso)"
   # Use `if`-guarded command so callers with `set -e` / `set -E` don't blow up

@@ -17,6 +17,29 @@ bonsai_now_iso() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
 }
 
+# Current time in ISO basic format (e.g. "20260527T211800Z") — lexically
+# comparable, used for log/slice filename stamps and the 24h cutoff compare.
+bonsai_now_basic() {
+  date -u +"%Y%m%dT%H%M%SZ"
+}
+
+# Canonical per-project file paths — single source of truth for the layout.
+bonsai_state_file()  { printf '%s/.claude/bonsai/state.json' "$1"; }
+bonsai_config_file() { printf '%s/.claude/bonsai/config.json' "$1"; }
+
+# sha256 hex digest of stdin. macOS ships `shasum`; Linux ships `sha256sum`.
+bonsai_sha256() { { shasum -a 256 2>/dev/null || sha256sum; } | awk '{print $1}'; }
+
+# File mtime in epoch seconds, cross-platform. GNU `stat -c %Y` first, then BSD
+# `stat -f %m`; on Linux `stat -f` is a filesystem flag that succeeds but prints
+# garbage, so validate numeric before returning (0 on failure).
+bonsai_file_mtime_epoch() {
+  local m
+  m="$(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || printf '0')"
+  [[ "$m" =~ ^[0-9]+$ ]] || m=0
+  printf '%s' "$m"
+}
+
 # Ensure a directory exists. Silent on success.
 bonsai_ensure_dir() {
   local dir="$1"

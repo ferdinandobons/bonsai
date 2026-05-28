@@ -13,7 +13,7 @@ mkdir -p "$cwd/.claude/bonsai/branches" "$cwd/.claude/bonsai/archive"
 state="$cwd/.claude/bonsai/state.json"
 [ -f "$state" ] || echo '{"__version":1,"last_run_iso":"1970-01-01T00:00:00Z","dedup_hashes":[]}' > "$state"
 
-cfg="$cwd/.claude/bonsai/config.json"
+cfg="$(bonsai_config_file "$cwd")"
 if [ ! -f "$cfg" ]; then
   cat > "$cfg" <<'EOF'
 {

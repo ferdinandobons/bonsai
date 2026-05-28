@@ -9,8 +9,6 @@ source "${BASH_SOURCE[0]%/*}/common.sh"
 
 _BONSAI_DEDUP_WINDOW=50
 
-_bonsai_state_file() { printf '%s/.claude/bonsai/state.json' "$1"; }
-
 _bonsai_dedup_normalize() {
   local s="$1"
   printf '%s' "$s" \
@@ -26,17 +24,14 @@ bonsai_dedup_hash() {
   local n_title n_ev
   n_title="$(_bonsai_dedup_normalize "$title")"
   n_ev="$(_bonsai_dedup_normalize "$evidence")"
-  # Use shasum (macOS) if present, fall back to sha256sum (Linux).
-  printf '%s|%s' "$n_title" "$n_ev" \
-    | { shasum -a 256 2>/dev/null || sha256sum; } \
-    | awk '{print $1}'
+  printf '%s|%s' "$n_title" "$n_ev" | bonsai_sha256
 }
 
 # Exit 0 if hash is in the rolling array, 1 otherwise (or on corrupt state).
 bonsai_dedup_contains() {
   local project_dir="$1"
   local hash="$2"
-  local file; file="$(_bonsai_state_file "$project_dir")"
+  local file; file="$(bonsai_state_file "$project_dir")"
   [[ -f "$file" ]] || return 1
   local present=""
   if ! present="$(jq -r --arg h "$hash" '.dedup_hashes // [] | index($h) // empty' "$file" 2>/dev/null)"; then
@@ -48,7 +43,7 @@ bonsai_dedup_contains() {
 bonsai_dedup_add() {
   local project_dir="$1"
   local hash="$2"
-  local file; file="$(_bonsai_state_file "$project_dir")"
+  local file; file="$(bonsai_state_file "$project_dir")"
   bonsai_ensure_dir "$(dirname "$file")" || return 1
   if [[ ! -f "$file" ]]; then
     # Guard the init jq just like the update path — if jq fails we must not

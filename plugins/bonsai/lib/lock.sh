@@ -27,9 +27,7 @@ bonsai_lock_path() {
   local project_dir="$1"
   local data_dir="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}"
   local hash
-  hash="$(printf '%s' "$project_dir" \
-    | { shasum -a 256 2>/dev/null || sha256sum; } \
-    | awk '{print substr($1,1,16)}')"
+  hash="$(printf '%s' "$project_dir" | bonsai_sha256 | cut -c1-16)"
   printf '%s/locks/%s.lock' "$data_dir" "$hash"
 }
 

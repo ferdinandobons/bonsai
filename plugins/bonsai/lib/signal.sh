@@ -24,5 +24,5 @@ bonsai_signal_diff_hash() {
     payload="$(git -C "$dir" diff HEAD -- . "$_BONSAI_SIGNAL_EXCLUDE" 2>/dev/null; \
                git -C "$dir" ls-files --others --exclude-standard -- . "$_BONSAI_SIGNAL_EXCLUDE" 2>/dev/null)"
   fi
-  printf '%s' "$payload" | { shasum -a 256 2>/dev/null || sha256sum; } | awk '{print $1}'
+  printf '%s' "$payload" | bonsai_sha256
 }

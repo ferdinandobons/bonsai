@@ -9,10 +9,8 @@ _BONSAI_MUTE_SOURCED=1
 # shellcheck disable=SC1091
 source "${BASH_SOURCE[0]%/*}/common.sh"
 
-_bonsai_mute_file() {
-  local project_dir="$1"
-  printf '%s/.claude/bonsai/mute.json' "$project_dir"
-}
+_bonsai_mute_file()        { printf '%s/.claude/bonsai/mute.json' "$1"; }
+_bonsai_mute_global_file() { printf '%s/mute.json' "${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}"; }
 
 # Parse a duration like 30m, 1h, 4h, 1d → seconds on stdout. Invalid → exit 1.
 bonsai_mute_parse_duration() {
@@ -31,82 +29,49 @@ bonsai_mute_parse_duration() {
   return 1
 }
 
-bonsai_mute_sleep() {
-  local project_dir="$1"
-  local duration="$2"
-  local secs
-  secs="$(bonsai_mute_parse_duration "$duration")" || return 1
-  local until=$(( $(date -u +%s) + secs ))
-  local file
-  file="$(_bonsai_mute_file "$project_dir")"
-  local content
-  content="$(jq -n --argjson u "$until" '{"__version":1,"mute_until_epoch":$u}')" || return 1
-  bonsai_json_write "$file" "$content"
-}
+# --- shared file-level primitives (project + global wrappers delegate here) ---
 
-bonsai_mute_wake() {
-  local project_dir="$1"
-  local file
-  file="$(_bonsai_mute_file "$project_dir")"
-  rm -f "$file"
-}
-
-# Exit 0 if muted, 1 otherwise. Expired → 1.
-bonsai_mute_is_muted() {
-  local project_dir="$1"
-  local file
-  file="$(_bonsai_mute_file "$project_dir")"
-  [[ -f "$file" ]] || return 1
-  local until
-  until="$(jq -r '.mute_until_epoch // 0' "$file" 2>/dev/null)"
-  [[ -z "$until" || "$until" == "null" ]] && return 1
-  local now
-  now="$(date -u +%s)"
-  [[ "$now" -lt "$until" ]]
-}
-
-# Global mute: $CLAUDE_PLUGIN_DATA/mute.json, same schema.
-# Lets a user silence Bonsai across all watched projects in one command.
-bonsai_mute_is_muted_global() {
-  local file="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/mute.json"
-  [[ -f "$file" ]] || return 1
-  local until
-  until="$(jq -r '.mute_until_epoch // 0' "$file" 2>/dev/null)"
-  [[ -z "$until" || "$until" == "null" ]] && return 1
-  local now
-  now="$(date -u +%s)"
-  [[ "$now" -lt "$until" ]]
-}
-
-bonsai_mute_sleep_global() {
-  local duration="$1"
-  local secs
-  secs="$(bonsai_mute_parse_duration "$duration")" || return 1
-  local until=$(( $(date -u +%s) + secs ))
-  local file="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/mute.json"
-  bonsai_ensure_dir "$(dirname "$file")" || return 1
-  local content
-  content="$(jq -n --argjson u "$until" '{"__version":1,"mute_until_epoch":$u}')" || return 1
-  bonsai_json_write "$file" "$content"
-}
-
-bonsai_mute_wake_global() {
-  local file="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/mute.json"
-  rm -f "$file"
-}
-
-bonsai_mute_remaining_seconds() {
-  local project_dir="$1"
-  local file
-  file="$(_bonsai_mute_file "$project_dir")"
+# Read mute_until_epoch from a file; prints 0 for missing/corrupt/expired-absent.
+_bonsai_mute_until() {
+  local file="$1"
   [[ -f "$file" ]] || { printf '0'; return 0; }
-  local until
-  until="$(jq -r '.mute_until_epoch // 0' "$file" 2>/dev/null)"
-  # Guard against corrupt file: empty/null until → 0 remaining.
-  [[ -z "$until" || "$until" == "null" ]] && { printf '0'; return 0; }
-  local now
-  now="$(date -u +%s)"
-  local rem=$(( until - now ))
+  local until; until="$(jq -r '.mute_until_epoch // 0' "$file" 2>/dev/null)"
+  [[ "$until" =~ ^[0-9]+$ ]] || until=0
+  printf '%s' "$until"
+}
+
+# Exit 0 if the file indicates an active (non-expired) mute.
+_bonsai_mute_is_muted_file() {
+  local until; until="$(_bonsai_mute_until "$1")"
+  [[ "$until" -ne 0 && "$(date -u +%s)" -lt "$until" ]]
+}
+
+# Write a mute expiring `duration` from now into the file.
+_bonsai_mute_sleep_file() {
+  local file="$1" duration="$2"
+  local secs; secs="$(bonsai_mute_parse_duration "$duration")" || return 1
+  local until=$(( $(date -u +%s) + secs ))
+  bonsai_ensure_dir "$(dirname "$file")" || return 1
+  local content; content="$(jq -n --argjson u "$until" '{"__version":1,"mute_until_epoch":$u}')" || return 1
+  bonsai_json_write "$file" "$content"
+}
+
+# --- per-project mute (state: $CLAUDE_PROJECT_DIR/.claude/bonsai/mute.json) ---
+
+bonsai_mute_sleep()    { _bonsai_mute_sleep_file "$(_bonsai_mute_file "$1")" "$2"; }
+bonsai_mute_wake()     { rm -f "$(_bonsai_mute_file "$1")"; }
+bonsai_mute_is_muted() { _bonsai_mute_is_muted_file "$(_bonsai_mute_file "$1")"; }
+
+# --- global mute ($CLAUDE_PLUGIN_DATA/mute.json) — silences all watched projects ---
+
+bonsai_mute_sleep_global()    { _bonsai_mute_sleep_file "$(_bonsai_mute_global_file)" "$1"; }
+bonsai_mute_wake_global()     { rm -f "$(_bonsai_mute_global_file)"; }
+bonsai_mute_is_muted_global() { _bonsai_mute_is_muted_file "$(_bonsai_mute_global_file)"; }
+
+# Seconds left on the per-project mute (0 if not muted / expired / corrupt).
+bonsai_mute_remaining_seconds() {
+  local until; until="$(_bonsai_mute_until "$(_bonsai_mute_file "$1")")"
+  local rem=$(( until - $(date -u +%s) ))
   [[ "$rem" -lt 0 ]] && rem=0
   printf '%d' "$rem"
 }

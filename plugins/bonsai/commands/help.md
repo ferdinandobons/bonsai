@@ -8,15 +8,15 @@ Print this command reference to the user:
 ```
 Bonsai commands
 
-  /bonsai:tend     →  start watching this project
-  /bonsai:rest     →  stop watching (history preserved)
-  /bonsai:health   →  show status, quota, cost
-  /bonsai:observe  →  show recent open observations
+  /bonsai:start    →  start watching this project
+  /bonsai:stop     →  stop watching (history preserved)
+  /bonsai:status   →  show status, quota, cost
+  /bonsai:list     →  show recent open observations
   /bonsai:discuss  →  talk about an observation in this session
-  /bonsai:trim     →  dismiss as unhelpful (Bonsai learns from this)
-  /bonsai:keep     →  mark as resolved / accepted
-  /bonsai:sleep    →  silence temporarily (30m / 1h / 4h / 1d)
-  /bonsai:wake     →  resume after sleep
+  /bonsai:dismiss  →  dismiss as unhelpful (Bonsai learns from this)
+  /bonsai:done     →  mark as resolved / accepted
+  /bonsai:mute     →  silence temporarily (30m / 1h / 4h / 1d)
+  /bonsai:unmute   →  resume after mute
   /bonsai:config   →  edit per-project settings
   /bonsai:help     →  this message
 

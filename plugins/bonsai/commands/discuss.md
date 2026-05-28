@@ -18,7 +18,7 @@ The observation file content follows:
 
 Help the user think through this. Do not jump to a solution — first surface
 what they might be missing, then together decide whether to act on it, modify
-it, or trim it. You have full session context; engage as a thinking partner,
+it, or dismiss it. You have full session context; engage as a thinking partner,
 not a code generator.
 
 If the bash output started with "ERR:", surface that message and stop.

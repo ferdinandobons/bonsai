@@ -35,13 +35,13 @@ Bonsai is a Claude Code plugin that executes shell scripts in your local environ
 
 - **Silent failure on the hook path.** Any error in `hooks/stop.sh` is trapped, logged, and the script exits 0. This protects the user's session but means a bug could silently disable observation. Inspect `${CLAUDE_PLUGIN_DATA}/logs/bonsai-errors.log` if you suspect Bonsai is misbehaving.
 - **Corrupt JSON in state files.** Every read function defends against corruption and returns safe defaults. Write functions refuse to overwrite a known-corrupt file (`/bonsai:config` is the user-facing example; `bonsai_json_write` is the underlying primitive).
-- **Concurrent writes.** Per-project state writes use `mktemp + mv` for atomicity. The whitelist add path has a small TOCTOU window for concurrent `/bonsai:tend` invocations on the same project; this is documented in the source and considered acceptable for v1.
+- **Concurrent writes.** Per-project state writes use `mktemp + mv` for atomicity. The whitelist add path has a small TOCTOU window for concurrent `/bonsai:start` invocations on the same project; this is documented in the source and considered acceptable for v1.
 
 ## Where to look first if something looks wrong
 
 1. `${CLAUDE_PLUGIN_DATA}/logs/bonsai-errors.log` — every silent failure path logs here.
 2. `${CLAUDE_PROJECT_DIR}/.claude/bonsai/INDEX.md` — confirms what observations have been emitted.
-3. `/bonsai:health` — surfaces last run, quota, mute state, last error.
+3. `/bonsai:status` — surfaces last run, quota, mute state, last error.
 
 ## Supported versions
 

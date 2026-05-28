@@ -55,7 +55,7 @@ bonsai_index_regenerate() {
   done
   shopt -u nullglob
 
-  # Atomic write: tmp + mv so readers (cat, /bonsai:observe) never see a
+  # Atomic write: tmp + mv so readers (cat, /bonsai:list) never see a
   # half-written INDEX.md during regeneration.
   local tmp
   tmp="$(mktemp "${idx}.tmp.XXXXXX")" || return 1

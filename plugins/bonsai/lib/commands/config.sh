@@ -13,13 +13,13 @@ if [ -z "$key" ]; then
     echo
     jq . "$cfg"
   else
-    echo "No config — run /bonsai:tend first."
+    echo "No config — run /bonsai:start first."
   fi
   exit 0
 fi
 
 if [ ! -f "$cfg" ]; then
-  echo "ERR: no config — run /bonsai:tend first."
+  echo "ERR: no config — run /bonsai:start first."
   exit 0
 fi
 
@@ -32,7 +32,7 @@ case "$key" in
 esac
 
 if ! jq empty "$cfg" 2>/dev/null; then
-  echo "ERR: config.json is currently corrupt. Fix it by hand or delete it and re-run /bonsai:tend."
+  echo "ERR: config.json is currently corrupt. Fix it by hand or delete it and re-run /bonsai:start."
   exit 0
 fi
 

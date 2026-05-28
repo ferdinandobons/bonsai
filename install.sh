@@ -110,7 +110,7 @@ say "${BOLD}🌿 Bonsai installed.${RESET}"
 echo
 say "Next steps:"
 say "  1. ${BOLD}Restart Claude Code${RESET} (or run ${BOLD}/plugin${RESET} to reload)."
-say "  2. In any project you want watched: ${BOLD}/bonsai:tend${RESET}"
+say "  2. In any project you want watched: ${BOLD}/bonsai:start${RESET}"
 say "  3. Anytime: ${BOLD}/bonsai:help${RESET} for the full command list."
 echo
 say "${DIM}Backup of your previous settings.json:${RESET}"

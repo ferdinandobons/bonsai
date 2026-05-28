@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Per-project mute (sleep/wake).
+# Per-project mute (mute/unmute).
 # State file: $CLAUDE_PROJECT_DIR/.claude/bonsai/mute.json
 # Schema: {"__version":1, "mute_until_epoch":<int>}
 
@@ -66,7 +66,7 @@ bonsai_mute_is_muted() {
 }
 
 # Global mute: $CLAUDE_PLUGIN_DATA/mute.json, same schema.
-# Lets a user silence Bonsai across all tended projects in one command.
+# Lets a user silence Bonsai across all watched projects in one command.
 bonsai_mute_is_muted_global() {
   local file="${CLAUDE_PLUGIN_DATA:-/tmp/bonsai-no-data}/mute.json"
   [[ -f "$file" ]] || return 1

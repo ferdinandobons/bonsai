@@ -80,7 +80,7 @@ ok "plugin disabled: ${PLUGIN_KEY}"
 echo
 say "${BOLD}Bonsai uninstalled from settings.${RESET}"
 echo
-say "Note: your observation logs (${BOLD}.claude/bonsai/${RESET} in each tended project) are ${BOLD}preserved${RESET}."
+say "Note: your observation logs (${BOLD}.claude/bonsai/${RESET} in each watched project) are ${BOLD}preserved${RESET}."
 say "Delete them manually if you want a clean slate:"
 say "  ${DIM}rm -rf <project>/.claude/bonsai${RESET}"
 echo

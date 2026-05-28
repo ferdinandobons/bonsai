@@ -1,14 +1,14 @@
 ---
-name: tend
+name: start
 description: Start watching the current project with Bonsai
 argument-hint: "[--throttle=Xm] [--quota-runs=N] [--quota-observations=N] [--lenses=a,b,c] [--model=name]"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/tend.sh:*)"]
+allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/lib/commands/start.sh:*)"]
 ---
 
-The user has invoked `/bonsai:tend` in the current project.
+The user has invoked `/bonsai:start` in the current project.
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}/lib/commands/tend.sh" $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/lib/commands/start.sh" $ARGUMENTS
 ```
 
 Print this welcome message to the user verbatim:
@@ -32,14 +32,14 @@ Where things live:
   .claude/bonsai/config.json          ← per-project config
 
 Commands:
-  /bonsai:health      → see what Bonsai has been up to
-  /bonsai:observe     → read recent observations
-  /bonsai:sleep 30m   → silence for 30 minutes
-  /bonsai:rest        → stop entirely (log preserved)
+  /bonsai:status      → see what Bonsai has been up to
+  /bonsai:list     → read recent observations
+  /bonsai:mute 30m   → silence for 30 minutes
+  /bonsai:stop        → stop entirely (log preserved)
   /bonsai:help        → all commands
 
 You can change throttle / quota / lenses with /bonsai:config or via flags
-on /bonsai:tend (e.g. /bonsai:tend --throttle=10m --lenses=technical,workflow).
+on /bonsai:start (e.g. /bonsai:start --throttle=10m --lenses=technical,workflow).
 ```
 
 Do not run any other action.

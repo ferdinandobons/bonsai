@@ -11,7 +11,7 @@ that you can throw away.
 
 ## Activation
 
-- [ ] `/bonsai:tend` → welcome message printed, `.claude/bonsai/` directory created with `config.json`, `state.json`, `branches/`, `archive/`.
+- [ ] `/bonsai:start` → welcome message printed, `.claude/bonsai/` directory created with `config.json`, `state.json`, `branches/`, `archive/`.
 - [ ] Whitelist contains the scratch project path: `jq . ~/.claude/plugin-data/bonsai/projects.json`.
 
 ## First observation cycle
@@ -26,27 +26,27 @@ that you can throw away.
 
 ## Discuss
 
-- [ ] `/bonsai:observe` → shows the new observation with its id.
+- [ ] `/bonsai:list` → shows the new observation with its id.
 - [ ] `/bonsai:discuss <id>` → Claude responds with the observation context loaded and engages in discussion.
 
 ## Trim
 
-- [ ] `/bonsai:trim <id> "test reason"` → branch frontmatter shows `status: trimmed`, `.claude/bonsai/trimmed.md` contains the entry.
+- [ ] `/bonsai:dismiss <id> "test reason"` → branch frontmatter shows `status: trimmed`, `.claude/bonsai/trimmed.md` contains the entry.
 
 ## Keep
 
 - [ ] Create another observation cycle (modify file → end turn → wait).
-- [ ] `/bonsai:keep <new-id>` → branch frontmatter shows `status: kept`.
+- [ ] `/bonsai:done <new-id>` → branch frontmatter shows `status: kept`.
 
-## Sleep / wake
+## Mute / unmute
 
-- [ ] `/bonsai:sleep 1m` → next `Stop` hook exits silently during the window.
-- [ ] Wait ~70 seconds (or run `/bonsai:wake`).
+- [ ] `/bonsai:mute 1m` → next `Stop` hook exits silently during the window.
+- [ ] Wait ~70 seconds (or run `/bonsai:unmute`).
 - [ ] Trigger another `Stop` event → observation cycle resumes.
 
-## Health
+## Status
 
-- [ ] `/bonsai:health` → reports ACTIVE state, last_run, today's counts, no recent errors.
+- [ ] `/bonsai:status` → reports ACTIVE state, last_run, today's counts, no recent errors.
 
 ## Help
 
@@ -54,7 +54,7 @@ that you can throw away.
 
 ## Rest
 
-- [ ] `/bonsai:rest` → whitelist no longer contains the scratch project, but `.claude/bonsai/` is preserved.
+- [ ] `/bonsai:stop` → whitelist no longer contains the scratch project, but `.claude/bonsai/` is preserved.
 
 ## Cleanup
 

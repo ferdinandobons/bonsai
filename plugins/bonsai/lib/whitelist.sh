@@ -38,7 +38,7 @@ bonsai_whitelist_add() {
   local file
   file="$(_bonsai_whitelist_file)"
   # NOTE: read-modify-write is not atomic across concurrent processes.
-  # Two simultaneous /bonsai:tend calls in the same project could lose one
+  # Two simultaneous /bonsai:start calls in the same project could lose one
   # add. Acceptable for v1 — user-invoked, rare concurrency. See design §9.
   local updated
   updated="$(jq --arg p "$path" '
@@ -60,7 +60,7 @@ bonsai_whitelist_remove() {
   local updated
   updated="$(jq --arg p "$path" '.tended -= [$p]' "$file" 2>/dev/null)"
   if [[ -z "$updated" ]]; then
-    # Corrupt JSON: log loudly. /bonsai:rest is user-invoked; the spec's
+    # Corrupt JSON: log loudly. /bonsai:stop is user-invoked; the spec's
     # silent-failure rule applies to background hooks, not to a command the
     # user just typed asking us to stop watching.
     bonsai_log ERROR "whitelist_remove: corrupt projects.json at $file"

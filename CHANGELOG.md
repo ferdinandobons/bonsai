@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.2.0] — 2026-05-28
+
+### Changed
+- **BREAKING — slash commands renamed for clarity.** The bonsai metaphor
+  stays in the `bonsai:` namespace prefix; individual commands now use
+  plain CLI verbs:
+
+  | Old              | New                |
+  |------------------|--------------------|
+  | `/bonsai:tend`   | `/bonsai:start`    |
+  | `/bonsai:rest`   | `/bonsai:stop`     |
+  | `/bonsai:health` | `/bonsai:status`   |
+  | `/bonsai:observe`| `/bonsai:list`     |
+  | `/bonsai:trim`   | `/bonsai:dismiss`  |
+  | `/bonsai:keep`   | `/bonsai:done`     |
+  | `/bonsai:sleep`  | `/bonsai:mute`     |
+  | `/bonsai:wake`   | `/bonsai:unmute`   |
+
+  `discuss`, `config`, and `help` are unchanged. No deprecation aliases:
+  pre-1.0, no known external scripts depend on the old names.
+- README, install/uninstall scripts, e2e checklist, and user-facing
+  messages updated to the new vocabulary (`muted`/`unmuted` instead of
+  `sleeping`/`awake`, `watched projects` instead of `tended projects`).
+
+### Internal
+- Whitelist JSON schema still uses the `tended` key (on-disk schema —
+  rename would require migration logic for existing users; flagged for
+  a future major bump if ever worth it).
+
 ## [0.1.6] — 2026-05-28
 
 ### Fixed

@@ -71,7 +71,7 @@ Restart Claude Code or run `/plugin` to reload.
 
 ```bash
 cd ~/your-project
-/bonsai:tend
+/bonsai:start
 ```
 
 That is the entire setup. Bonsai now watches this project silently. The minimum interval between checks is 5 minutes. Most checks produce zero observations, by design.
@@ -80,15 +80,15 @@ That is the entire setup. Bonsai now watches this project silently. The minimum 
 
 | Command | Action |
 |---|---|
-| `/bonsai:tend` | Start watching this project |
-| `/bonsai:rest` | Stop watching (history preserved) |
-| `/bonsai:health` | Status, quota, cost |
-| `/bonsai:observe` | Read recent observations |
+| `/bonsai:start` | Start watching this project |
+| `/bonsai:stop` | Stop watching (history preserved) |
+| `/bonsai:status` | Status, quota, cost |
+| `/bonsai:list` | Read recent observations |
 | `/bonsai:discuss <id>` | Talk through an observation in this session |
-| `/bonsai:trim <id> [reason]` | Mark as not useful. Bonsai learns from this. |
-| `/bonsai:keep <id>` | Mark as resolved |
-| `/bonsai:sleep <duration>` | Silence temporarily (`30m`, `1h`, `4h`, `1d`). Append `--global` for all projects. |
-| `/bonsai:wake` | Resume after sleep |
+| `/bonsai:dismiss <id> [reason]` | Mark as not useful. Bonsai learns from this. |
+| `/bonsai:done <id>` | Mark as resolved |
+| `/bonsai:mute <duration>` | Silence temporarily (`30m`, `1h`, `4h`, `1d`). Append `--global` for all projects. |
+| `/bonsai:unmute` | Resume after sleep |
 | `/bonsai:config <key> <value>` | Edit per-project settings |
 | `/bonsai:help` | Full command reference |
 

@@ -44,8 +44,10 @@ bonsai_index_regenerate() {
       open)
         case "$sev" in
           critical) crit+=("$f") ;;
-          normal)   norm+=("$f") ;;
           low)      low+=("$f") ;;
+          # normal + any unknown/malformed severity: never drop an open
+          # observation from the index.
+          *)        norm+=("$f") ;;
         esac
         ;;
       kept)     kept+=("$f") ;;

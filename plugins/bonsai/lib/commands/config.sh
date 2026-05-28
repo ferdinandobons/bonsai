@@ -40,12 +40,14 @@ if ! jq empty "$cfg" 2>/dev/null; then
 fi
 
 tmp=$(mktemp)
+# `|| true`: a jq failure (e.g. config is valid JSON but not an object) must not
+# abort under `set -e` — the integrity check below turns it into a clean error.
 if [[ "$value" =~ ^-?[0-9]+$ ]]; then
-  jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null
+  jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null || true
 elif [[ "$value" =~ ^(true|false)$ ]]; then
-  jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null
+  jq --arg k "$key" --argjson v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null || true
 else
-  jq --arg k "$key" --arg v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null
+  jq --arg k "$key" --arg v "$value" '.[$k] = $v' "$cfg" > "$tmp" 2>/dev/null || true
 fi
 
 if [ ! -s "$tmp" ] || ! jq empty "$tmp" 2>/dev/null; then

@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
+### Fixed
+- **Open observations with a malformed severity no longer vanish from the
+  index.** `bonsai_index_regenerate`'s severity `case` had no default branch, so
+  an `open` branch whose severity wasn't `critical`/`normal`/`low` was silently
+  dropped from INDEX.md (the file stayed on disk but became invisible). Unknown
+  severities now fall back to the `normal` section. (`lib/index.sh`)
+- **`/bonsai:start` validates numeric flags instead of silently ignoring bad
+  values.** `--throttle`/`--quota-*` with a non-numeric value are now skipped
+  with a `WARN` (previously a bad value made `jq` fail and was dropped with no
+  feedback). Config writes go through a helper that cleans up its tmp file on
+  failure, and `set -f` prevents glob expansion while parsing flags.
+- **`/bonsai:config` fails gracefully on a non-object config.** A config that is
+  valid JSON but not an object (e.g. `[]`) passed the `jq empty` check but made
+  the update `jq` error out, which under `set -e` killed the script before its
+  own error message. The update `jq` calls now tolerate failure so the integrity
+  check reports a clean error. (`lib/commands/config.sh`)
 
 ## [0.4.0] — 2026-05-28
 

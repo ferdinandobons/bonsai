@@ -60,6 +60,16 @@ write_obs() {
   grep -q "Archived (0)"      "$idx"
 }
 
+@test "index: open observation with unknown severity still appears" {
+  # An LLM-malformed severity must not make an open observation vanish from the
+  # index (the file stays on disk but would be invisible without a fallback).
+  write_obs "2026-05-27-001" "high" "technical" "Weird severity"
+  bonsai_index_regenerate "$CLAUDE_PROJECT_DIR"
+  local idx="$CLAUDE_PROJECT_DIR/.claude/bonsai/INDEX.md"
+  grep -q "Weird severity" "$idx"
+  grep -q "2026-05-27-001" "$idx"
+}
+
 @test "index: regenerate leaves no .tmp file behind" {
   bonsai_index_regenerate "$CLAUDE_PROJECT_DIR"
   run bash -c "ls $CLAUDE_PROJECT_DIR/.claude/bonsai/INDEX.md.tmp.* 2>/dev/null"

@@ -31,18 +31,48 @@ if [ ! -f "$cfg" ]; then
 EOF
 fi
 
+# Apply a jq mutation to $cfg atomically; on failure keep the old file, warn,
+# and clean up the tmp. Always returns 0 so `set -e` can't abort the loop.
+_set_cfg() {
+  local expr="$1"; shift
+  local tmp; tmp="$(mktemp 2>/dev/null)" || { echo "WARN: mktemp failed, skipping"; return 0; }
+  if jq "$@" "$expr" "$cfg" > "$tmp" 2>/dev/null; then
+    mv "$tmp" "$cfg"
+  else
+    rm -f "$tmp"; echo "WARN: failed to apply config update"
+  fi
+  return 0
+}
+
 # Optional overrides on top of the default config just written. Each is a
-# --key=value flag; --throttle accepts an m/h/d suffix (e.g. 10m, 2h, 1d).
+# --key=value flag; --throttle takes an m/h/d suffix (e.g. 10m, 2h, 1d). Numeric
+# flags are validated — a bad value is skipped with a warning, not silently
+# dropped. `set -f`: word-split $args without glob expansion.
+set -f
 for tok in $args; do
   case "$tok" in
-    --throttle=*) v="${tok#*=}"; n="${v%[mhd]}"; u="${v: -1}"; mins="$n"
+    --throttle=*)
+      v="${tok#*=}"; n="${v%[mhd]}"; u="${v: -1}"
+      if ! [[ "$n" =~ ^[0-9]+$ ]]; then echo "WARN: ignoring invalid --throttle=$v"; continue; fi
+      mins="$n"
       [ "$u" = "h" ] && mins=$((n*60)); [ "$u" = "d" ] && mins=$((n*1440))
-      tmp=$(mktemp); jq --argjson m "$mins" '.throttle_min_minutes = $m' "$cfg" > "$tmp" && mv "$tmp" "$cfg" ;;
-    --quota-runs=*) v="${tok#*=}"; tmp=$(mktemp); jq --argjson v "$v" '.quota.runs_per_day = $v' "$cfg" > "$tmp" && mv "$tmp" "$cfg" ;;
-    --quota-observations=*) v="${tok#*=}"; tmp=$(mktemp); jq --argjson v "$v" '.quota.observations_per_day = $v' "$cfg" > "$tmp" && mv "$tmp" "$cfg" ;;
-    --lenses=*) v="${tok#*=}"; arr=$(echo "$v" | jq -R 'split(",")'); tmp=$(mktemp); jq --argjson a "$arr" '.lenses_enabled = $a' "$cfg" > "$tmp" && mv "$tmp" "$cfg" ;;
-    --model=*) v="${tok#*=}"; tmp=$(mktemp); jq --arg m "$v" '.gardener_model = $m' "$cfg" > "$tmp" && mv "$tmp" "$cfg" ;;
+      _set_cfg '.throttle_min_minutes = $m' --argjson m "$mins" ;;
+    --quota-runs=*)
+      v="${tok#*=}"
+      if ! [[ "$v" =~ ^[0-9]+$ ]]; then echo "WARN: ignoring invalid --quota-runs=$v"; continue; fi
+      _set_cfg '.quota.runs_per_day = $v' --argjson v "$v" ;;
+    --quota-observations=*)
+      v="${tok#*=}"
+      if ! [[ "$v" =~ ^[0-9]+$ ]]; then echo "WARN: ignoring invalid --quota-observations=$v"; continue; fi
+      _set_cfg '.quota.observations_per_day = $v' --argjson v "$v" ;;
+    --lenses=*)
+      v="${tok#*=}"; arr="$(printf '%s' "$v" | jq -R 'split(",")')"
+      _set_cfg '.lenses_enabled = $a' --argjson a "$arr" ;;
+    --model=*)
+      v="${tok#*=}"
+      _set_cfg '.gardener_model = $m' --arg m "$v" ;;
   esac
 done
+set +f
 
 echo "OK"

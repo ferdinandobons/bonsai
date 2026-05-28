@@ -36,8 +36,13 @@ bonsai_archive_run() {
       trimmed) thr="$trimmed_days" ;;
       *) continue ;;
     esac
+    # Cross-platform mtime: try GNU stat -c first (Linux/CI), then BSD stat -f
+    # (macOS). Order matters: on Linux, `stat -f` is a filesystem-info flag
+    # that succeeds AND prints multi-line garbage, which would break the
+    # arithmetic. Validate that mtime is purely numeric before use.
     local mtime
-    mtime="$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)"
+    mtime="$(stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null || printf 0)"
+    [[ "$mtime" =~ ^[0-9]+$ ]] || mtime=0
     local age_days=$(( (now - mtime) / 86400 ))
     if [[ "$age_days" -ge "$thr" ]]; then
       mv "$f" "$arc/"

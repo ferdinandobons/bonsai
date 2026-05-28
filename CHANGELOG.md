@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `timeout`/`gtimeout` (600s) when available, degrading gracefully where
   neither is installed (macOS), with `--max-turns` remaining the bound.
   (`lib/dispatch.sh`)
+- **TTL purge of transient plugin-data.** Pre-sliced transcripts
+  (`sliced/sliced-*.jsonl`) and per-run gardener logs (`logs/gardener-*.log`)
+  were written once and never cleaned up, growing unbounded (~MBs/day at
+  moderate use). `bonsai_archive_run` now purges these older than
+  `transient_data_ttl_days` (default 7, configurable via `/bonsai:config`).
+  The persistent `bonsai.log` / `bonsai-errors.log` are never matched.
+  (`lib/archive.sh`)
 
 ## [0.3.1] — 2026-05-28
 

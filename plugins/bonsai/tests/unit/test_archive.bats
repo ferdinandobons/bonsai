@@ -69,3 +69,53 @@ EOF
   run bonsai_archive_run "$CLAUDE_PROJECT_DIR"
   [ "$status" -eq 0 ]
 }
+
+# Backdate a file's mtime by N days (BSD vs GNU).
+backdate() {
+  local f="$1" days="$2"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    touch -t "$(date -u -v-${days}d +%Y%m%d%H%M.%S)" "$f"
+  else
+    touch -d "$days days ago" "$f"
+  fi
+}
+
+@test "archive: purge_transient deletes old sliced + gardener logs, keeps recent" {
+  mkdir -p "$CLAUDE_PLUGIN_DATA/sliced" "$CLAUDE_PLUGIN_DATA/logs"
+  touch "$CLAUDE_PLUGIN_DATA/sliced/sliced-old.jsonl";  backdate "$CLAUDE_PLUGIN_DATA/sliced/sliced-old.jsonl" 10
+  touch "$CLAUDE_PLUGIN_DATA/logs/gardener-old.log";    backdate "$CLAUDE_PLUGIN_DATA/logs/gardener-old.log" 10
+  touch "$CLAUDE_PLUGIN_DATA/sliced/sliced-new.jsonl"
+  touch "$CLAUDE_PLUGIN_DATA/logs/gardener-new.log"
+
+  bonsai_archive_purge_transient 7
+
+  [ ! -f "$CLAUDE_PLUGIN_DATA/sliced/sliced-old.jsonl" ]
+  [ ! -f "$CLAUDE_PLUGIN_DATA/logs/gardener-old.log" ]
+  [ -f "$CLAUDE_PLUGIN_DATA/sliced/sliced-new.jsonl" ]
+  [ -f "$CLAUDE_PLUGIN_DATA/logs/gardener-new.log" ]
+}
+
+@test "archive: purge_transient never deletes persistent bonsai logs" {
+  mkdir -p "$CLAUDE_PLUGIN_DATA/logs"
+  touch "$CLAUDE_PLUGIN_DATA/logs/bonsai.log";        backdate "$CLAUDE_PLUGIN_DATA/logs/bonsai.log" 365
+  touch "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log"; backdate "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log" 365
+
+  bonsai_archive_purge_transient 7
+
+  [ -f "$CLAUDE_PLUGIN_DATA/logs/bonsai.log" ]
+  [ -f "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log" ]
+}
+
+@test "archive: run also purges old transient data (default ttl)" {
+  mkdir -p "$CLAUDE_PLUGIN_DATA/sliced"
+  touch "$CLAUDE_PLUGIN_DATA/sliced/sliced-stale.jsonl"
+  backdate "$CLAUDE_PLUGIN_DATA/sliced/sliced-stale.jsonl" 30
+  bonsai_archive_run "$CLAUDE_PROJECT_DIR"
+  [ ! -f "$CLAUDE_PLUGIN_DATA/sliced/sliced-stale.jsonl" ]
+}
+
+@test "archive: purge_transient on missing dirs is a no-op success" {
+  rm -rf "$CLAUDE_PLUGIN_DATA/sliced" "$CLAUDE_PLUGIN_DATA/logs"
+  run bonsai_archive_purge_transient 7
+  [ "$status" -eq 0 ]
+}

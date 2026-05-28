@@ -24,10 +24,10 @@ if [ ! -f "$cfg" ]; then
 fi
 
 case "$key" in
-  gardener_model|throttle_min_minutes|max_observations_per_run|push_notifications_enabled|auto_archive_kept_after_days|auto_archive_trimmed_after_days|push_notifications_per_hour)
+  gardener_model|throttle_min_minutes|max_observations_per_run|push_notifications_enabled|auto_archive_kept_after_days|auto_archive_trimmed_after_days|transient_data_ttl_days|push_notifications_per_hour)
     ;;
   *)
-    echo "ERR: unknown config key. Allowed: gardener_model, throttle_min_minutes, max_observations_per_run, push_notifications_enabled, auto_archive_kept_after_days, auto_archive_trimmed_after_days, push_notifications_per_hour"
+    echo "ERR: unknown config key. Allowed: gardener_model, throttle_min_minutes, max_observations_per_run, push_notifications_enabled, auto_archive_kept_after_days, auto_archive_trimmed_after_days, transient_data_ttl_days, push_notifications_per_hour"
     exit 0 ;;
 esac
 

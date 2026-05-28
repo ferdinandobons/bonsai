@@ -1,0 +1,100 @@
+# Changelog
+
+All notable changes to Bonsai are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
+
+## [0.1.3] — 2026-05-28
+
+### Added
+- **One-liner installer** (`install.sh`): atomic `jq`-based merge into
+  `~/.claude/settings.json` with timestamped backup, idempotent re-runs,
+  pre-existing-install detection. Invocable via `bash <(curl ...)`.
+- **Uninstaller** (`uninstall.sh`): removes marketplace + plugin entry from
+  settings while preserving per-project `.claude/bonsai/` observation logs.
+- **README install section rewritten** to document three install paths in
+  order of ease: one-liner, native `/plugin marketplace add + /plugin install`,
+  manual `settings.json` edit.
+
+### Notes
+- The native `/plugin marketplace add ferdinandobons/bonsai` path was the
+  simplest all along but was not documented in v0.1.0–v0.1.2. Now front-and-center.
+
+## [0.1.2] — 2026-05-28
+
+### Fixed
+- **CI was failing on Linux** due to a cross-platform `stat` flag conflict in
+  `lib/archive.sh`. `stat -f %m` on BSD/macOS returns mtime; on Linux it is the
+  filesystem-info flag (succeeds with multi-line output, breaking arithmetic).
+  Fix: try `stat -c %Y` (GNU) first, fall back to `stat -f %m` (BSD); validate
+  numeric output before use. v0.1.2 is the first version verified green by
+  GitHub Actions on Ubuntu.
+
+## [0.1.1] — 2026-05-28
+
+### Added
+- **Global mute** for users with multiple tended projects:
+  `/bonsai:sleep --global` and `/bonsai:wake --global` operate on a global mute
+  file at `$CLAUDE_PLUGIN_DATA/mute.json`. The Stop hook checks the global mute
+  *before* the per-project mute. Adds `bonsai_mute_is_muted_global`,
+  `bonsai_mute_sleep_global`, `bonsai_mute_wake_global` (4 new tests).
+
+### Fixed
+- **Push notifications were declared but never sent.** v0.1.0 had `lib/push.sh`
+  fully implemented and advertised in the welcome message, but the gardener
+  had no `PushNotification` tool in its `allowed-tools` and no Step 6
+  instruction to send one. Critical observations were silently demoted to
+  chips-only. Fixed by adding the tool + the workflow step (rate-limited via
+  `bonsai_push_rate_ok`).
+- **`/bonsai:config` could silently wipe `config.json`** when the file was
+  already corrupt: `jq` would fail, `tmp` would be empty, and `mv` would
+  replace the corrupt config with an empty file. Now guards with `jq empty`
+  before AND after the edit and refuses to write on either failure.
+
+### Notes
+- This release was published before CI completed; the Linux CI failure caught
+  in 0.1.1 was fixed and re-tagged as 0.1.2.
+
+## [0.1.0] — 2026-05-28
+
+### Added
+First public release.
+
+- **`Stop` hook gatekeeper** (`hooks/stop.sh`) declared in `plugin.json` — runs
+  after every Claude Code turn. Gating chain: whitelist → mute → throttle →
+  per-project quota → global quota. Any failure exits 0 silently. When all
+  gates pass, emits `hookSpecificOutput` with a natural-language
+  `additionalContext` instructing Claude to dispatch the gardener subagent
+  in the background.
+- **`bonsai:gardener` subagent** (`agents/gardener.md`) — read-only,
+  network-free, 60s wall-time budget, ≤3 observations per run, hard quality
+  bar ("silence beats noise"). Triages between technical / strategic /
+  workflow lenses based on transcript + filesystem signals. Outputs branch
+  files, chips (for normal+critical), push notifications (for critical only),
+  and the dedup hash array.
+- **11 namespaced slash commands** (`/bonsai:tend`, `:rest`, `:health`,
+  `:observe`, `:discuss`, `:trim`, `:keep`, `:sleep`, `:wake`, `:config`,
+  `:help`) — opt-in lifecycle, observation review, anti-pattern teaching,
+  config.
+- **11 shell helpers** under `lib/` (`common`, `whitelist`, `mute`, `quota`,
+  `dedup`, `branches`, `index`, `chip`, `push`, `archive`, `migrate`),
+  shellcheck-clean, atomic JSON writes via `mktemp + mv`, set-`-E`-safe
+  jq invocations, cross-platform `date`/`stat` handling.
+- **Per-project file store**: `INDEX.md` (auto-maintained), `state.json`
+  (last_run_iso + dedup hash window of 50), `config.json` (per-project
+  overrides), `trimmed.md` (anti-patterns log), `branches/` (one file per
+  observation), `archive/` (auto-moved after configurable thresholds).
+- **103 bats tests** (95 unit + 8 integration), GitHub Actions CI with
+  shellcheck + bats + JSON manifest validation, manual E2E checklist for
+  release validation, Apache 2.0 license.
+
+[Unreleased]: https://github.com/ferdinandobons/bonsai/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.3
+[0.1.2]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.2
+[0.1.1]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.1
+[0.1.0]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.0

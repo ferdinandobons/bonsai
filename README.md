@@ -11,7 +11,30 @@ what matters. Never intervene for the sake of intervening.
 
 ## Install
 
-Add this marketplace to your Claude Code settings (in `~/.claude/settings.json`):
+Pick the path that matches your style. Any of the three works; all reach the same end state.
+
+### A — One-liner installer (fastest)
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/ferdinandobons/bonsai/main/install.sh)
+```
+
+The script edits `~/.claude/settings.json` atomically (with a timestamped backup), registers the marketplace, and enables the plugin. Idempotent — safe to re-run. Requires `jq`. Restart Claude Code after.
+
+### B — Native Claude Code commands
+
+Inside any Claude Code session:
+
+```
+/plugin marketplace add ferdinandobons/bonsai
+/plugin install bonsai@bonsai
+```
+
+The plugin is downloaded and enabled immediately. No restart needed.
+
+### C — Manual settings.json edit (for cautious users)
+
+Add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -19,15 +42,22 @@ Add this marketplace to your Claude Code settings (in `~/.claude/settings.json`)
     "bonsai": {
       "source": { "source": "github", "repo": "ferdinandobons/bonsai" }
     }
+  },
+  "enabledPlugins": {
+    "bonsai@bonsai": true
   }
 }
 ```
 
-Then install the plugin:
+Restart Claude Code (or run `/plugin` to reload).
+
+### Uninstall
 
 ```bash
-/plugin install bonsai@bonsai
+bash <(curl -fsSL https://raw.githubusercontent.com/ferdinandobons/bonsai/main/uninstall.sh)
 ```
+
+Removes the marketplace + plugin entry from settings. Your per-project observation logs (`.claude/bonsai/` inside each project) are **preserved** — delete them manually if you want a clean slate.
 
 ## Activate per project
 

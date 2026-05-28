@@ -23,6 +23,8 @@ source "$LIB_DIR/quota.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/migrate.sh"
 # shellcheck disable=SC1091
+source "$LIB_DIR/lock.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/dispatch.sh"
 
 # Wrap every error so the hook never breaks the session.
@@ -69,6 +71,18 @@ main() {
   # 5. Caps gate
   if ! CLAUDE_PROJECT_DIR="$cwd" bonsai_quota_caps_ok; then
     bonsai_log INFO "stop: quota cap reached, skip"
+    exit 0
+  fi
+
+  # 5b. Concurrency gate — acquire the per-project lock. If another gardener is
+  # already running for this project (a parallel interactive session, or a Stop
+  # hook racing this one), skip silently rather than spawn a second gardener
+  # that would race on quota.json / state.json / branch-id allocation. The lock
+  # is released by the detached gardener subshell when claude exits; a stale
+  # lock (crashed gardener) is reclaimed automatically.
+  local lock_dir; lock_dir="$(bonsai_lock_path "$cwd")"
+  if ! bonsai_lock_acquire "$lock_dir"; then
+    bonsai_log INFO "stop: gardener already running for this project, skip"
     exit 0
   fi
 
@@ -152,8 +166,11 @@ main() {
   #   cat ~/.claude/plugins/data/bonsai-bonsai/logs/gardener-*.log
   local log_file
   log_file="$CLAUDE_PLUGIN_DATA/logs/gardener-$(date -u +%Y%m%dT%H%M%SZ).log"
-  if ! bonsai_dispatch_gardener "$prompt_input" "$log_file"; then
+  if ! bonsai_dispatch_gardener "$prompt_input" "$log_file" "$lock_dir"; then
     bonsai_log ERROR "stop.sh: bonsai_dispatch_gardener failed (is 'claude' on PATH?)"
+    # Nothing was spawned, so release the lock now instead of waiting for the
+    # staleness backstop — otherwise the project would be blocked for 15 min.
+    bonsai_lock_release "$lock_dir"
   fi
 
   # 9. Exit silently — CC's Stop hook schema does not allow additionalContext,

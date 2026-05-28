@@ -97,6 +97,23 @@ EOF
   [ "$n" = "1" ]
 }
 
+@test "stop: skips when a gardener lock is already held for the project" {
+  fixture_projects_json "$CLAUDE_PROJECT_DIR"
+  fixture_state_json "1970-01-01T00:00:00Z"
+  source "$BONSAI_PLUGIN_ROOT/lib/common.sh"
+  source "$BONSAI_PLUGIN_ROOT/lib/lock.sh"
+  local lock; lock="$(bonsai_lock_path "$CLAUDE_PROJECT_DIR")"
+  bonsai_lock_acquire "$lock"   # held + fresh → concurrency gate must block
+  local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" \
+    '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
+  run run_stop_hook_with_input "$input"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  # Hook skipped before step 6 → last_run untouched.
+  local iso; iso="$(jq -r '.last_run_iso' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json")"
+  [ "$iso" = "1970-01-01T00:00:00Z" ]
+}
+
 @test "stop: malformed stdin JSON is silently ignored" {
   run bash -c 'echo "{not json" | bash "$BONSAI_PLUGIN_ROOT/hooks/stop.sh"'
   [ "$status" -eq 0 ]

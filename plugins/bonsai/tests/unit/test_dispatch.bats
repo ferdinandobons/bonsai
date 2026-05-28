@@ -23,8 +23,8 @@ teardown() { teardown_sandbox; }
 @test "dispatch: launches claude -p with --agent bonsai:gardener" {
   source "$BONSAI_PLUGIN_ROOT/lib/dispatch.sh"
   bonsai_dispatch_gardener '{"project_dir":"/tmp/x","session_id":"s1"}' "/tmp/log.txt"
-  # Give the backgrounded process a moment to flush
-  sleep 0.5
+  # Poll for the detached process to flush its args (avoids a flaky fixed sleep).
+  wait_for_file "$STUB_DIR/claude-args.txt"
   grep -q -- "-p" "$STUB_DIR/claude-args.txt"
   grep -q -- "--agent" "$STUB_DIR/claude-args.txt"
   grep -q -- "bonsai:gardener" "$STUB_DIR/claude-args.txt"
@@ -33,8 +33,7 @@ teardown() { teardown_sandbox; }
 @test "dispatch: passes the prompt input as stdin to claude" {
   source "$BONSAI_PLUGIN_ROOT/lib/dispatch.sh"
   bonsai_dispatch_gardener '{"project_dir":"/tmp/x","session_id":"abc"}' "/tmp/log.txt"
-  sleep 0.5
-  grep -q '"session_id":"abc"' "$STUB_DIR/claude-stdin.txt"
+  wait_for_grep '"session_id":"abc"' "$STUB_DIR/claude-stdin.txt"
 }
 
 @test "dispatch: returns immediately without waiting for claude to finish" {
@@ -62,9 +61,22 @@ EOF
   chmod +x "$STUB_DIR/claude"
   local log="$BATS_TEST_TMPDIR/gardener.log"
   bonsai_dispatch_gardener '{}' "$log"
-  sleep 0.5
+  # stderr-line is written last; once it lands, stdout-line is already there.
+  wait_for_grep "stderr-line" "$log"
   grep -q "stdout-line" "$log"
   grep -q "stderr-line" "$log"
+}
+
+@test "dispatch: releases the lock dir after claude exits" {
+  source "$BONSAI_PLUGIN_ROOT/lib/dispatch.sh"
+  local lock="$BATS_TEST_TMPDIR/gardener.lock"
+  mkdir -p "$lock"
+  bonsai_dispatch_gardener '{}' "$BATS_TEST_TMPDIR/log" "$lock"
+  # Poll for the detached subshell to finish and release the lock (the stub
+  # claude exits immediately). Avoids a fixed sleep that makes the test flaky.
+  local i
+  for i in $(seq 1 50); do [ -d "$lock" ] || break; sleep 0.1; done
+  [ ! -d "$lock" ]
 }
 
 @test "dispatch: returns nonzero if 'claude' binary is missing" {

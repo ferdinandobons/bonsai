@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
+### Fixed
+- **Branch id collisions can no longer overwrite observations.** Id assignment
+  was delegated to the LLM gardener (`gardener.md` proposed `YYYY-MM-DD-NNN`),
+  which cannot reliably count existing ids — two runs both picked `001` and
+  `bonsai_branches_write` used `mv`, silently clobbering the earlier branch.
+  `branches_write` is now the authority on the id: it detects an already-used
+  id prefix, reallocates to the next free id for the day, and creates the file
+  with `ln` (atomic, refuses to overwrite) instead of `mv`. The LLM-proposed id
+  is now advisory. (`lib/branches.sh`)
+
+### Added
+- **Per-project concurrency lock (`lib/lock.sh`).** Two interactive sessions on
+  the same project — or two Stop hooks racing — could spawn concurrent
+  gardeners that race on `quota.json` / `state.json` / branch-id allocation.
+  `stop.sh` now acquires an atomic `mkdir`-based lock before dispatch and skips
+  silently if a gardener is already running; the detached gardener subshell
+  releases it on exit, with a 15-minute staleness backstop so a crashed
+  gardener can never wedge the project. Uses `mkdir` rather than `flock` for
+  macOS portability.
+- **Wall-clock guard on the gardener subprocess.** `--max-turns` caps
+  iterations but cannot stop a hung `claude`; dispatch now wraps it with
+  `timeout`/`gtimeout` (600s) when available, degrading gracefully where
+  neither is installed (macOS), with `--max-turns` remaining the bound.
+  (`lib/dispatch.sh`)
 
 ## [0.3.1] — 2026-05-28
 

@@ -9,24 +9,34 @@ source "${BASH_SOURCE[0]%/*}/common.sh"
 
 _bonsai_branches_dir() { printf '%s/.claude/bonsai/branches' "$1"; }
 
-# Allocate next id of the form YYYY-MM-DD-NNN for today.
-bonsai_branches_allocate_id() {
+# Next free id of the form <day>-NNN for a given day (YYYY-MM-DD), scanning
+# existing branch files. Shared by allocate_id and the collision-safe write
+# path so id assignment is deterministic in code — never delegated to the LLM,
+# which cannot reliably count existing ids and has produced duplicate ids in
+# practice (two runs both picking 001).
+_bonsai_branches_next_free_id() {
   local project_dir="$1"
+  local day="$2"
   local dir; dir="$(_bonsai_branches_dir "$project_dir")"
   bonsai_ensure_dir "$dir" || return 1
-  local today; today="$(date -u +%Y-%m-%d)"
   local max=0
-  local pattern="$dir/${today}-"
   shopt -s nullglob
-  for f in "$pattern"*.md; do
+  for f in "$dir/${day}-"*.md; do
     local base; base="$(basename "$f")"
-    if [[ "$base" =~ ^${today}-([0-9]{3})- ]]; then
+    if [[ "$base" =~ ^${day}-([0-9]{3})- ]]; then
       local n=$((10#${BASH_REMATCH[1]}))
       [[ "$n" -gt "$max" ]] && max="$n"
     fi
   done
   shopt -u nullglob
-  printf '%s-%03d' "$today" $((max + 1))
+  printf '%s-%03d' "$day" $((max + 1))
+}
+
+# Allocate next id of the form YYYY-MM-DD-NNN for today.
+bonsai_branches_allocate_id() {
+  local project_dir="$1"
+  local today; today="$(date -u +%Y-%m-%d)"
+  _bonsai_branches_next_free_id "$project_dir" "$today"
 }
 
 # Extract a single field from the observation JSON, fail loudly on missing/null.
@@ -81,7 +91,6 @@ bonsai_branches_write() {
   local slug; slug="$(bonsai_slugify "$title")"
   local dir; dir="$(_bonsai_branches_dir "$project_dir")"
   bonsai_ensure_dir "$dir" || return 1
-  local file="$dir/${id}-${slug}.md"
 
   # YAML safety: quote the title (it's user/LLM text and may contain colons).
   # Escape internal " and strip newlines so the frontmatter stays single-line.
@@ -90,37 +99,74 @@ bonsai_branches_write() {
   local safe_evidence; safe_evidence="$(_bonsai_yaml_sanitize_oneline "$evidence_ref")"
   safe_evidence="${safe_evidence//\"/\\\"}"
 
-  # Atomic write: tmp + mv so a killed gardener never leaves a partial file behind.
-  local tmp
-  tmp="$(mktemp "${file}.tmp.XXXXXX")" || return 1
-  if ! {
-    printf -- '---\n'
-    printf 'id: %s\n'             "$id"
-    printf 'created: %s\n'        "$created"
-    printf 'lens: %s\n'           "$lens"
-    printf 'severity: %s\n'       "$severity"
-    printf 'status: open\n'
-    printf 'title: "%s"\n'        "$safe_title"
-    printf 'evidence_ref: "%s"\n' "$safe_evidence"
-    printf 'dedup_hash: %s\n'     "$dedup_hash"
-    printf -- '---\n\n'
-    printf '%s\n\n'                       "$tldr"
-    printf '## Evidence\n%s\n\n'          "$evidence_detail"
-    printf '## Suggested action\n%s\n\n'  "$suggested_action"
-    printf '## Action brief\n%s\n\n'      "$action_brief"
-    local related; related="$(printf '%s' "$obs_json" | jq -r '.related_branch_ids[]?' 2>/dev/null)"
-    if [[ -n "$related" ]]; then
-      printf '## Related\n'
-      while IFS= read -r r; do printf -- '- [[%s]]\n' "$r"; done <<< "$related"
-      printf '\n'
+  # Day component used to reallocate a colliding id. Derive it from the proposed
+  # id; fall back to today (UTC) if the id is malformed.
+  local day="${id:0:10}"
+  [[ "$day" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || day="$(date -u +%Y-%m-%d)"
+
+  # Pre-render the related-links block once (independent of id).
+  local related; related="$(printf '%s' "$obs_json" | jq -r '.related_branch_ids[]?' 2>/dev/null)"
+
+  # Collision-safe atomic write. The LLM-proposed id is advisory: if any branch
+  # already carries that id (any slug), reassign to the next free id for the
+  # day. We then create the file via `ln` (atomic, fails if the exact target
+  # exists) rather than `mv` (which silently clobbers) so a duplicate id can
+  # never overwrite an existing observation. On a lost race we reallocate and
+  # retry, bounded so a pathological loop can't hang the gardener.
+  local file tmp attempt=0
+  local max_attempts=50
+  while :; do
+    shopt -s nullglob
+    local existing=("$dir/${id}-"*.md)
+    shopt -u nullglob
+    if (( ${#existing[@]} > 0 )); then
+      id="$(_bonsai_branches_next_free_id "$project_dir" "$day")"
     fi
-  } > "$tmp"; then
+    file="$dir/${id}-${slug}.md"
+
+    tmp="$(mktemp "${dir}/.${slug}.tmp.XXXXXX")" || return 1
+    if ! {
+      printf -- '---\n'
+      printf 'id: %s\n'             "$id"
+      printf 'created: %s\n'        "$created"
+      printf 'lens: %s\n'           "$lens"
+      printf 'severity: %s\n'       "$severity"
+      printf 'status: open\n'
+      printf 'title: "%s"\n'        "$safe_title"
+      printf 'evidence_ref: "%s"\n' "$safe_evidence"
+      printf 'dedup_hash: %s\n'     "$dedup_hash"
+      printf -- '---\n\n'
+      printf '%s\n\n'                       "$tldr"
+      printf '## Evidence\n%s\n\n'          "$evidence_detail"
+      printf '## Suggested action\n%s\n\n'  "$suggested_action"
+      printf '## Action brief\n%s\n\n'      "$action_brief"
+      if [[ -n "$related" ]]; then
+        printf '## Related\n'
+        while IFS= read -r r; do printf -- '- [[%s]]\n' "$r"; done <<< "$related"
+        printf '\n'
+      fi
+    } > "$tmp"; then
+      rm -f "$tmp"
+      return 1
+    fi
+
+    # `ln` is atomic and refuses to overwrite an existing target — this is the
+    # last line of defense against clobbering a same-named file.
+    if ln "$tmp" "$file" 2>/dev/null; then
+      rm -f "$tmp"
+      # Return the resolved path so callers don't reconstruct the filename.
+      printf '%s' "$file"
+      return 0
+    fi
     rm -f "$tmp"
-    return 1
-  fi
-  mv "$tmp" "$file" || { rm -f "$tmp"; return 1; }
-  # Return the resolved path so callers don't reconstruct the filename.
-  printf '%s' "$file"
+    attempt=$((attempt + 1))
+    if (( attempt >= max_attempts )); then
+      bonsai_log ERROR "branches_write: could not allocate a free id after $max_attempts attempts (day=$day)"
+      return 1
+    fi
+    # Lost a race for this filename: force reallocation on the next iteration.
+    id="$(_bonsai_branches_next_free_id "$project_dir" "$day")"
+  done
 }
 
 # Read a single frontmatter field value.

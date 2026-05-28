@@ -22,6 +22,23 @@ teardown_sandbox() {
   fi
 }
 
+# Poll until a file exists and is non-empty, up to ~5s. Returns 0 on success.
+# Use instead of a fixed `sleep` when asserting on output written by a detached
+# background process (nohup ... & disown), whose timing is nondeterministic.
+wait_for_file() {
+  local f="$1" i
+  for i in $(seq 1 50); do [ -s "$f" ] && return 0; sleep 0.1; done
+  [ -s "$f" ]
+}
+
+# Poll until a pattern appears in a file, up to ~5s. Returns 0 on match.
+# Robust against partial writes: keeps polling until the content is present.
+wait_for_grep() {
+  local pat="$1" f="$2" i
+  for i in $(seq 1 50); do grep -q "$pat" "$f" 2>/dev/null && return 0; sleep 0.1; done
+  return 1
+}
+
 # Source a lib script by relative path under lib/.
 # Fails loudly with context if the file isn't there yet (helps when a test is
 # run before its corresponding lib has been written).

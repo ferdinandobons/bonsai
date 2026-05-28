@@ -51,6 +51,32 @@ teardown() { teardown_sandbox; }
   grep -q "## Action brief" "$f"
 }
 
+@test "branches: write never overwrites an existing id (collision → reassign)" {
+  # Two observations propose the SAME id (as the LLM gardener does today).
+  # The second write must NOT clobber the first: it reassigns to the next free
+  # id and returns the resolved path.
+  local obs1='{"id":"2026-05-27-001","created_iso":"2026-05-27T21:18:00Z","lens":"technical","severity":"normal","title":"First","tldr":"x","evidence_ref":"a","evidence_detail":"b","suggested_action":"c","action_brief":"d","related_branch_ids":[],"dedup_hash":"h1"}'
+  local obs2='{"id":"2026-05-27-001","created_iso":"2026-05-27T21:18:00Z","lens":"technical","severity":"normal","title":"Second","tldr":"x","evidence_ref":"a","evidence_detail":"b","suggested_action":"c","action_brief":"d","related_branch_ids":[],"dedup_hash":"h2"}'
+  local f1; f1="$(bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs1")"
+  local f2; f2="$(bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs2")"
+  # Both files exist, are distinct, and the first is untouched.
+  [ -f "$f1" ]
+  [ -f "$f2" ]
+  [ "$f1" != "$f2" ]
+  grep -q "^title: \"First\"$" "$f1"
+  grep -q "^title: \"Second\"$" "$f2"
+  # The reassigned file carries a different, higher id in its frontmatter
+  # (not a duplicate 001).
+  local id1 id2
+  id1="$(bonsai_branches_read_field "$f1" "id")"
+  id2="$(bonsai_branches_read_field "$f2" "id")"
+  [ "$id1" = "2026-05-27-001" ]
+  [ "$id2" != "2026-05-27-001" ]
+  # Exactly two branch files on disk → no silent clobber.
+  local count; count="$(find "$CLAUDE_PROJECT_DIR/.claude/bonsai/branches" -name '*.md' | wc -l | tr -d ' ')"
+  [ "$count" -eq 2 ]
+}
+
 @test "branches: read_field extracts frontmatter value" {
   local obs='{"id":"2026-05-27-001","created_iso":"2026-05-27T21:18:00Z","lens":"technical","severity":"normal","title":"Foo","tldr":"x","evidence_ref":"a","evidence_detail":"b","suggested_action":"c","action_brief":"d","related_branch_ids":[],"dedup_hash":"h"}'
   bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs"

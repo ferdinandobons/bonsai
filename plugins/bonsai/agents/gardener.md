@@ -214,6 +214,12 @@ For each observation to emit, construct the observation JSON:
 }
 ```
 
+The `NNN` in `id` is **advisory** — you don't need to scan existing branches to
+get it right. `bonsai_branches_write` is the authority: if the id you propose is
+already taken it reassigns to the next free id for the day and never overwrites
+an existing branch. Just use the date plus any `NNN` (e.g. `001`); the helper
+returns the path it actually wrote.
+
 Then call the lib helpers via Bash:
 
 ```bash

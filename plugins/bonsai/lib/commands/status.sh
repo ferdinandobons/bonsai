@@ -98,8 +98,14 @@ echo "  hook errors (24h):    $hook_err_count"
 echo "  gardener errors (24h): $g_errored"
 if [ -n "$hook_err_recent" ] || [ -n "$gardener_errs" ]; then
   echo "  recent:"
-  [ -n "$hook_err_recent" ] && printf '%s\n' "$hook_err_recent" | sed 's/^/    hook: /'
-  [ -n "$gardener_errs" ] && printf '%s\n' "$gardener_errs" | sed 's/^/    gardener: /'
+  # Full `if` blocks, not `[ … ] && …`: under `set -e` a trailing AND-list whose
+  # test fails (e.g. no gardener errors) would make this the script's last command
+  # and leak a non-zero exit. An untaken `if` is a clean exit 0.
+  if [ -n "$hook_err_recent" ]; then printf '%s\n' "$hook_err_recent" | sed 's/^/    hook: /'; fi
+  if [ -n "$gardener_errs" ]; then printf '%s\n' "$gardener_errs" | sed 's/^/    gardener: /'; fi
 else
   echo "  recent:               none"
 fi
+
+# The status command must never report failure just because it summarized errors.
+exit 0

@@ -5,6 +5,14 @@
 [[ -n "${_BONSAI_COMMON_SOURCED:-}" ]] && return 0
 _BONSAI_COMMON_SOURCED=1
 
+# Git Bash (MSYS2) rewrites command-line arguments that look like POSIX paths
+# (e.g. "/foo") into Windows paths before handing them to native binaries such as
+# jq.exe. That silently corrupts the project paths we pass as `jq --arg`, so a key
+# written one way never matches when read back. Turn the conversion off for our
+# processes; both variables are inert on macOS/Linux.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
 # We deliberately do NOT enable `set -o pipefail` at module scope: sourcing
 # must not change the caller's shell options. Bonsai must never disturb the
 # session, and pipefail in stop.sh could turn a SIGPIPE on a downstream tool

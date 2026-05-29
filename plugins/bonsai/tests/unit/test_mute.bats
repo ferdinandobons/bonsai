@@ -41,7 +41,7 @@ teardown() { teardown_sandbox; }
   [ "$status" -eq 0 ]
 }
 
-@test "mute: sleep then wake → is_muted false" {
+@test "mute: sleep then wake -> is_muted false" {
   bonsai_mute_sleep "$CLAUDE_PROJECT_DIR" "1h"
   bonsai_mute_wake "$CLAUDE_PROJECT_DIR"
   run bonsai_mute_is_muted "$CLAUDE_PROJECT_DIR"

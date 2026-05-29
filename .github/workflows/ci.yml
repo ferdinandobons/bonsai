@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   test:
     name: test (${{ matrix.os }})
@@ -82,7 +87,25 @@ jobs:
       - name: Bats unit tests
         run: |
           cd plugins/bonsai
-          bats tests/unit
+          bats --print-output-on-failure tests/unit 2>&1 | tee bats-unit.log
+
+      # TEMP DEBUG: the Windows Actions log is not readable from the dev
+      # environment, so surface the failing tests as a PR comment to diagnose Git
+      # Bash incompatibilities. Removed once Windows is green.
+      - name: Report bats failures (debug, Windows)
+        if: failure() && runner.os == 'Windows' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          fails="$(grep -E '^(not ok|#|bats:)' plugins/bonsai/bats-unit.log | head -300)"
+          jq -n --arg b "$(printf 'Windows bats unit failures (debug):\n\n```\n%s\n```\n' "$fails")" '{body:$b}' > comment.json
+          curl -sS -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/issues/$PR/comments" \
+            -d @comment.json
 
       # Integration tests drive detached background gardeners (nohup … & disown)
       # and poll for their output with timing-based waits. That timing is

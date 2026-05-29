@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.6.0] — 2026-05-29
+
+### Added
+- **Return reminder.** When you come back to a watched project — on the next
+  prompt you send (`UserPromptSubmit`) or when a new conversation starts
+  (`SessionStart`) — Bonsai surfaces a soft in-chat box listing the top **critical**
+  observations awaiting review, so a high-severity finding can't sit unseen in a
+  file you forgot to open. Reading stays manual (`/bonsai:list`); the reminder only
+  points. New `hooks/remind.sh` + `lib/reminder.sh`.
+  - **Critical only** — normal/low never trigger it; silence still beats noise.
+  - **Once per session** — per-session dedup in its own `reminder.json` (never
+    touches `state.json`, so it can't race the detached gardener). Re-surfaces only
+    when a new critical appears or the session changes.
+  - **Respects mute** — a globally or per-project muted project stays silent.
+  - The box shows up to 3 most-recent findings (id + title), collapsing the rest
+    into "+N more".
+
 ## [0.5.1] — 2026-05-29
 
 Full audit & cleanup pass (multi-agent review across correctness, security, dead

@@ -1,6 +1,6 @@
 {
   "name": "bonsai",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Silent observer that surfaces high-signal observations between turns.",
   "author": {
     "name": "Ferdinando Bonsegna",
@@ -15,6 +15,26 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/stop.sh\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/remind.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/remind.sh\""
           }
         ]
       }

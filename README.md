@@ -119,6 +119,21 @@ The gardener then, in its own headless context:
 
 Observations live as readable markdown files inside each project. Commit them to git if you want a team-shared journal, or gitignore them if you want them private. Your choice, project by project.
 
+### The return reminder
+
+Reading is pull, not push: you read observations when you choose to, with `/bonsai:list`. But to keep a **critical** finding from sitting unseen, Bonsai surfaces a soft reminder when you come back to a watched project — on the next prompt you send or when a new conversation starts. It's a small in-chat box with the top findings:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌿 Bonsai · 2 critical observations awaiting review
+  1. 2026-05-29-005 — Race condition in cache update under …
+  2. 2026-05-29-003 — Unvalidated path in plugin loader
+  → /bonsai:list to read · /bonsai:discuss <id> to dig in
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Only **critical** observations trigger it (silence still beats noise), it shows once per session, and a muted project stays silent. Reading the finding is always your move — the reminder just points.
+
 Each gardener run is capped at 25 iterations and uses your Agent SDK credit (included with Claude Pro/Max/Team/Enterprise plans). Token usage per project, per day, is visible via `/bonsai:status`.
 
 ## Uninstall
@@ -164,4 +179,4 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report vulnerabil
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.5.1](https://github.com/ferdinandobons/bonsai/releases/tag/v0.5.1).
+See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.6.0](https://github.com/ferdinandobons/bonsai/releases/tag/v0.6.0).

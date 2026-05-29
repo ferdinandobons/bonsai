@@ -1,0 +1,24 @@
+# Bonsai is a bash plugin. A CRLF anywhere in a shell script — especially in the
+# shebang — breaks bash on every platform ("bad interpreter", "$'\r': command
+# not found"), and a `[[ "$x" == "$y" ]]` compare silently fails when one side
+# carries a stray \r. On Windows, Git's default `core.autocrlf=true` would
+# rewrite these files to CRLF on checkout, so the plugin would die the moment a
+# hook fired. Pin every text file to LF so a Windows checkout is byte-identical
+# to a macOS/Linux one.
+* text=auto eol=lf
+
+# Be explicit for the executable + data files that must never gain a CR.
+*.sh    text eol=lf
+*.bash  text eol=lf
+*.bats  text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.svg   text eol=lf
+
+# Binary assets — never normalize line endings.
+*.png   binary
+*.jpg   binary
+*.gif   binary
+*.ico   binary

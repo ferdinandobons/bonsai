@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
 
+## [0.6.1] — 2026-05-29
+
+### Fixed
+- **CI**: the Shellcheck job runs `shellcheck -x` (default severity, fails on
+  warnings), but local checks had used `-S error` — masking two preexisting
+  `SC2155` warnings in `stop.sh` introduced during the v0.5.1 audit. CI had been
+  red since v0.5.1 for this reason. Declared/assigned separately; no behavior
+  change. (v0.6.0 shipped the return reminder but with this red CI; v0.6.1 is the
+  first green build carrying it.)
+
 ## [0.6.0] — 2026-05-29
 
 ### Added

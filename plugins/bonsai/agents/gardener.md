@@ -173,9 +173,19 @@ If you reach this point with zero candidates, emit nothing and jump to Step 8.
 
 For each candidate observation:
 
-1. Compute `dedup_hash`:
-   ```
-   sha256( lowercase( collapse_whitespace( title + evidence_ref ) ) )
+1. Compute `dedup_hash` with the canonical library helper — **never re-derive the
+   formula by hand.** The prompt and `bonsai_dedup_hash()` silently drifted apart
+   once (obs 2026-05-28-002), so the library is now the single source of truth.
+   Titles are LLM-authored and may contain quotes/braces, so pass the fields
+   through a file rather than splicing them into `bash -c` (same data-safety rule
+   as Step 5b): write `{"title":"…","evidence_ref":"…"}` to
+   `$CLAUDE_PLUGIN_DATA/dedup/<session_id>.json` with the Write tool, then:
+   ```bash
+   bash -c '
+     source "$CLAUDE_PLUGIN_ROOT/lib/dedup.sh"
+     f="$CLAUDE_PLUGIN_DATA/dedup/<session_id>.json"
+     bonsai_dedup_hash "$(jq -r .title "$f")" "$(jq -r .evidence_ref "$f")"
+   '
    ```
 2. If `dedup_hash` is in `recent_dedup_hashes` → drop silently (already emitted recently).
 3. If the observation shares lens + theme with any entry in `trimmed_anti_patterns` → drop.

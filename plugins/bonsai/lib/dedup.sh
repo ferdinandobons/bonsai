@@ -62,8 +62,11 @@ bonsai_dedup_add() {
     return $?
   fi
   local updated=""
+  # Idempotent append: drop any existing copy of $h before re-appending, so a
+  # double-call (e.g. a retried emit) can never duplicate an entry. Re-adding a
+  # known hash also moves it to the tail, keeping the rolling window LRU-ordered.
   if ! updated="$(jq --arg h "$hash" --argjson n "$_BONSAI_DEDUP_WINDOW" '
-    .dedup_hashes = ((.dedup_hashes // []) + [$h])
+    .dedup_hashes = (((.dedup_hashes // []) | map(select(. != $h))) + [$h])
     | .dedup_hashes = (.dedup_hashes | .[(-$n):])
   ' "$file" 2>/dev/null)"; then
     updated=""

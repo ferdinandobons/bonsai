@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Nothing yet. See the [open issues](https://github.com/ferdinandobons/bonsai/issues) for what's planned.
+### Fixed
+- **dedup.sh**: `bonsai_dedup_add` appended unconditionally, so a retried emit
+  duplicated an observation's hash in the rolling window (observed in the wild:
+  obs `2026-05-28-003`'s hash was stored twice). It now drops any existing copy
+  before re-appending — idempotent, and a re-add moves the entry to the tail
+  (keeps the window LRU-ordered).
+- **gardener.md**: Step 4 recomputed `dedup_hash` from a hand-written `sha256(…)`
+  formula that omitted the `|` separator used by `bonsai_dedup_hash()`, so a
+  gardener following the prompt literally would miss dedup and re-emit. Step 4 now
+  delegates to the library helper (single source of truth), passing the fields
+  through a file per the anti-injection rule. Adds a regression guard test that
+  fails if the inline formula ever returns. Addresses obs `2026-05-28-002`.
 
 ## [0.6.1] — 2026-05-29
 

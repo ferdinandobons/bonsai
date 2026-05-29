@@ -68,3 +68,28 @@ teardown() { teardown_sandbox; }
   run jq -r '.dedup_hashes | last' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
   [ "$output" = "h-05" ]
 }
+
+@test "dedup: add is idempotent — same hash twice yields a single entry" {
+  bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "dupe"
+  bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "dupe"
+  run jq -r '[.dedup_hashes[] | select(. == "dupe")] | length' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
+  [ "$output" = "1" ]
+}
+
+@test "dedup: re-adding an existing hash moves it to the tail" {
+  bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "a"
+  bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "b"
+  bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "a"
+  run jq -rc '.dedup_hashes' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
+  [ "$output" = '["b","a"]' ]
+}
+
+# Regression guard for the prompt↔library drift (obs 2026-05-28-002): the
+# gardener must compute the dedup hash via the canonical library function, not a
+# hand-rolled sha256 formula that can silently diverge from bonsai_dedup_hash().
+@test "dedup: gardener delegates hashing to the library, no inline sha256 formula" {
+  local g="$BONSAI_PLUGIN_ROOT/agents/gardener.md"
+  grep -q "bonsai_dedup_hash" "$g"
+  run grep -nE 'sha256\(' "$g"
+  [ "$status" -ne 0 ]
+}

@@ -52,9 +52,11 @@ jobs:
 
       - name: Tool versions
         run: |
-          bash --version | head -1
+          # No pipes here: `shell: bash` enables `pipefail`, so `cmd | head -1`
+          # could fail the step on SIGPIPE when head closes the pipe early.
+          bash --version
           jq --version
-          shellcheck --version | sed -n '1,2p'
+          shellcheck --version
           bats --version
 
       - name: Validate JSON manifests
@@ -62,11 +64,14 @@ jobs:
           jq empty .claude-plugin/marketplace.json
           jq empty plugins/bonsai/.claude-plugin/plugin.json
 
+      # Run from plugins/bonsai so shellcheck resolves the `${CLAUDE_PLUGIN_ROOT}`
+      # sources as ./lib/*.sh and follows them. From the repo root those paths
+      # don't resolve, and shellcheck 0.11.0 (brew/choco on macOS/Windows) then
+      # emits SC1091 and fails the step — older 0.9.0 (apt) is more lenient, which
+      # is why a Linux-only pipeline never caught it.
       - name: Shellcheck
-        run: |
-          shellcheck -x plugins/bonsai/lib/*.sh
-          shellcheck -x plugins/bonsai/lib/commands/*.sh
-          shellcheck -x plugins/bonsai/hooks/*.sh
+        working-directory: plugins/bonsai
+        run: shellcheck -x lib/*.sh lib/commands/*.sh hooks/*.sh
 
       - name: Bats unit tests
         run: |

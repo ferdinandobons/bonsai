@@ -2,13 +2,6 @@
 # Common test setup. Source this from every .bats file via:
 #   load 'helpers/setup'
 
-# Set before any jq runs (fixtures, lib): stop Git Bash (MSYS2) from rewriting
-# POSIX-looking path arguments to native binaries, which would desync fixture
-# keys (written as jq literals) from lib lookups (passed via jq --arg). Mirrors
-# the export in common.sh; inert on macOS/Linux.
-export MSYS_NO_PATHCONV=1
-export MSYS2_ARG_CONV_EXCL='*'
-
 # Resolve plugin root (parent of tests/)
 BONSAI_PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export BONSAI_PLUGIN_ROOT

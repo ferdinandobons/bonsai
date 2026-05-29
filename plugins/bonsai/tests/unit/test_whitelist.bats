@@ -15,9 +15,13 @@ teardown() { teardown_sandbox; }
   [ "$status" -eq 1 ]
 }
 
+# Slash-free keys throughout these matching tests: a fixture writes them as jq
+# literals while the lib looks them up via `jq --arg`, and Git Bash rewrites
+# POSIX-looking ("/foo") --arg values into Windows paths, desyncing the two. Keys
+# without a leading slash are immune and exercise the same opaque-key logic.
 @test "whitelist: is_tended returns 0 when cwd is in list" {
-  fixture_projects_json "/foo" "/bar"
-  run bonsai_whitelist_is_tended "/foo"
+  fixture_projects_json "foo" "bar"
+  run bonsai_whitelist_is_tended "foo"
   [ "$status" -eq 0 ]
 }
 
@@ -34,9 +38,9 @@ teardown() { teardown_sandbox; }
 }
 
 @test "whitelist: add creates file if missing" {
-  bonsai_whitelist_add "/new/path"
+  bonsai_whitelist_add "newpath"
   [ -f "$CLAUDE_PLUGIN_DATA/projects.json" ]
-  run jq -e '.tended | index("/new/path") != null' "$CLAUDE_PLUGIN_DATA/projects.json"
+  run jq -e --arg p "newpath" '.tended | index($p) != null' "$CLAUDE_PLUGIN_DATA/projects.json"
   [ "$status" -eq 0 ]
 }
 
@@ -48,10 +52,10 @@ teardown() { teardown_sandbox; }
 }
 
 @test "whitelist: remove deletes entry but keeps others" {
-  fixture_projects_json "/a" "/b" "/c"
-  bonsai_whitelist_remove "/b"
+  fixture_projects_json "a" "b" "c"
+  bonsai_whitelist_remove "b"
   run jq -r '.tended | join(",")' "$CLAUDE_PLUGIN_DATA/projects.json"
-  [ "$output" = "/a,/c" ]
+  [ "$output" = "a,c" ]
 }
 
 @test "whitelist: remove on missing entry is a no-op" {

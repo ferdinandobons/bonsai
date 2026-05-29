@@ -137,6 +137,17 @@ teardown() { teardown_sandbox; }
   [[ "$output" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]]
 }
 
+@test "quota: update_last_run on rebuild path never writes an empty state when jq fails" {
+  echo "{bad json" > "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"   # forces rebuild
+  # Shadow jq with a stub that always fails, simulating jq missing/erroring.
+  mkdir -p "$BATS_TEST_TMPDIR/bin"
+  printf '#!/usr/bin/env bash\nexit 1\n' > "$BATS_TEST_TMPDIR/bin/jq"
+  chmod +x "$BATS_TEST_TMPDIR/bin/jq"
+  PATH="$BATS_TEST_TMPDIR/bin:$PATH" run bonsai_quota_update_last_run "$CLAUDE_PROJECT_DIR" "abc"
+  [ "$status" -ne 0 ]                                                    # must report failure
+  [ -s "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json" ]                 # must NOT be emptied
+}
+
 @test "quota: record_event handles corrupt quota.json gracefully" {
   echo "invalid" > "$CLAUDE_PLUGIN_DATA/quota.json"
   run bonsai_quota_record_event "run" "/foo"

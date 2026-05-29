@@ -307,7 +307,16 @@ already taken it reassigns to the next free id for the day and never overwrites
 an existing branch. Just use the date plus any `NNN` (e.g. `001`); the helper
 returns the path it actually wrote.
 
-Then call the lib helpers via Bash:
+Then call the lib helpers via Bash. The observation JSON is multi-paragraph,
+LLM-authored text (title, action_brief) and **must not be spliced into
+`bash -c`** — the same data-safety rule as Steps 4 and 5b. A quote or brace in a
+title would break the command or allow injection. So write the JSON to a file
+with the Write tool first, then have Bash read it back; pass `project_dir` as a
+positional argument (`"$1"`), never interpolated into the script body:
+
+1. With the **Write tool**, write the observation JSON object to
+   `$CLAUDE_PLUGIN_DATA/emit/<session_id>/obs.json`.
+2. Then:
 
 ```bash
 bash -c '
@@ -316,18 +325,23 @@ bash -c '
   source "$CLAUDE_PLUGIN_ROOT/lib/index.sh"
   source "$CLAUDE_PLUGIN_ROOT/lib/quota.sh"
 
-  # Write the branch file and get the assigned id back
-  bonsai_branches_write "<project_dir>" "<obs_json>"
+  project_dir="$1"
+  obs_file="$2"
+  obs_json="$(cat "$obs_file")"
+  dedup_hash="$(jq -r .dedup_hash "$obs_file")"
+
+  # Write the branch file (collision-safe; reassigns the id if taken)
+  bonsai_branches_write "$project_dir" "$obs_json"
 
   # Record dedup hash so this observation is not repeated
-  bonsai_dedup_add "<project_dir>" "<dedup_hash>"
+  bonsai_dedup_add "$project_dir" "$dedup_hash"
 
   # Record the observation event in quota counters
-  bonsai_quota_record_event "observation" "<project_dir>"
+  bonsai_quota_record_event "observation" "$project_dir"
 
   # Regenerate INDEX.md to include the new branch
-  bonsai_index_regenerate "<project_dir>"
-'
+  bonsai_index_regenerate "$project_dir"
+' _ "<project_dir>" "$CLAUDE_PLUGIN_DATA/emit/<session_id>/obs.json"
 ```
 
 The branch file is the user interface. INDEX.md (auto-regenerated) is the user's

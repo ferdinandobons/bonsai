@@ -3,6 +3,7 @@
 # the output is surfaced verbatim by the .md command, and a nonzero exit would
 # read as a tool failure.
 set -e
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/_bootstrap.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/common.sh"
 

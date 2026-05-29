@@ -32,6 +32,20 @@ teardown() { teardown_sandbox; }
   [ -d "$LOCK" ]
 }
 
+@test "lock: concurrent reclaim of one stale lock yields exactly one winner" {
+  bonsai_lock_acquire "$LOCK"
+  printf '%s' "1" > "$LOCK/epoch"   # backdate well past the stale threshold
+  local wins="$BATS_TEST_TMPDIR/wins"; : > "$wins"
+  # Several Stop hooks racing on the same stale lock must not all reclaim it —
+  # only one may win, else two gardeners spawn and race quota.json / branch ids.
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    ( bonsai_lock_acquire "$LOCK" 900 && printf 'x\n' >> "$wins" ) &
+  done
+  wait
+  local n; n="$(grep -c x "$wins" 2>/dev/null || printf 0)"
+  [ "$n" -eq 1 ]
+}
+
 @test "lock: a held lock whose epoch is missing is treated as fresh, not reclaimed" {
   bonsai_lock_acquire "$LOCK"
   rm -f "$LOCK/epoch"            # simulate an epoch write that didn't land

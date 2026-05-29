@@ -19,6 +19,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   delegates to the library helper (single source of truth), passing the fields
   through a file per the anti-injection rule. Adds a regression guard test that
   fails if the inline formula ever returns. Addresses obs `2026-05-28-002`.
+- **lock.sh**: the stale-lock reclaim used `rm`+`mkdir`, a TOCTOU window where two
+  racing Stop hooks could both reclaim the lock and spawn two gardeners. Reclaim
+  is now serialized through an atomic-`mkdir` guard with an in-place epoch refresh
+  (no rm→mkdir gap), yielding a deterministic single winner under concurrency.
+- **branches.sh**: `id`/`lens`/`severity` were written as bare YAML scalars, so a
+  newline in an LLM-authored value could inject a frontmatter line; they are now
+  newline-stripped and `severity` is clamped to its enum. Backslashes in the
+  quoted `title`/`evidence_ref` are now escaped. `set_status` no longer leaves a
+  tmp file behind on a failed `mv`.
+- **archive.sh**: archived branches kept a stale `kept`/`trimmed` status; they are
+  now marked `archived` before the move. A failed `stat` (mtime 0) no longer
+  archives a brand-new branch prematurely.
+- **index.sh**: the "Archived" section now counts files under `archive/` (it was
+  always 0); a `]` in a title is escaped so it can't break the markdown link.
+- **quota.sh**: the corrupt-state rebuild path in `update_last_run` ran an
+  unguarded `jq -n` that could write an empty `state.json`; now guarded like the
+  update and dedup-init paths.
+- **stop.sh**: `dedup_hashes` is read before `update_last_run` (a corrupt-state
+  rebuild resets it); the gardener log filename now includes the hook PID so two
+  dispatches in the same second can't truncate each other's log.
+- **commands (done/dismiss/discuss)**: an unknown id aborted under `set -e` (the
+  `f="$(find_by_id …)"` substitution) instead of printing "not found"; fixed with
+  `|| true`.
+
+### Security
+- **gardener.md**: Step 6 spliced the multi-paragraph, LLM-authored observation
+  JSON straight into `bash -c` (a quote/brace in a title could break the command
+  or inject). It now writes the JSON to a file and reads it back, passing
+  `project_dir` as a positional argument — the data-safety rule already used in
+  Steps 4 and 5b.
+- **branches.sh**: `find_by_id` now validates the id against the literal
+  `YYYY-MM-DD-NNN` shape, so a glob/metacharacter in a CLI argument can't widen
+  the `-name` match to an unrelated branch.
+
+### Changed
+- **CI**: `shellcheck -x` now also covers `lib/commands/*.sh` — 11 user-facing
+  scripts that were never linted — and the warnings it surfaced were fixed.
+- **Tests**: new `test_commands.bats` covers done/dismiss/discuss/stop/mute/
+  unmute/list/status (only start/config had tests before). `test_stop_flow.bats`
+  now asserts the empty-output contract with `[ ]` (a mid-test `[[ ]]` asserted
+  nothing) and stubs `claude` in the two tests that previously could fire a live
+  gardener. Suite 189 → 211 tests, all green.
+- **quota.json** cross-project read-modify-write race is now documented as
+  tolerated (matching `projects.json`) rather than silently present.
 
 ## [0.6.1] — 2026-05-29
 

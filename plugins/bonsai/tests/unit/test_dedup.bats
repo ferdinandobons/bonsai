@@ -93,3 +93,13 @@ teardown() { teardown_sandbox; }
   run grep -nE 'sha256\(' "$g"
   [ "$status" -ne 0 ]
 }
+
+@test "gardener: Step 6 passes the observation JSON via a file, not spliced into bash -c" {
+  local g="$BONSAI_PLUGIN_ROOT/agents/gardener.md"
+  # The multi-paragraph, LLM-authored observation JSON must NOT be spliced inline
+  # (quotes/braces in a title would break the bash -c string or inject).
+  run grep -F '"<obs_json>"' "$g"
+  [ "$status" -ne 0 ]
+  # It must be read back from a file instead.
+  grep -q 'jq -r .dedup_hash "$obs_file"' "$g"
+}

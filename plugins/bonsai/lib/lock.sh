@@ -53,10 +53,38 @@ bonsai_lock_acquire() {
   [[ "$created" =~ ^[0-9]+$ ]] || created="$now"
   if (( now - created >= stale_secs )); then
     bonsai_log WARN "lock_acquire: reclaiming stale lock $lock_dir (age $((now - created))s)"
-    rm -rf "$lock_dir" 2>/dev/null
-    if mkdir "$lock_dir" 2>/dev/null; then
-      date -u +%s > "$lock_dir/epoch" 2>/dev/null || true
-      return 0
+    # Serialize the reclaim through a separate atomic-mkdir guard. A bare
+    # rm+mkdir has a TOCTOU window where a racing hook's rm deletes the winner's
+    # fresh lock, so both believe they hold it and two gardeners spawn. With the
+    # guard, exactly one racer wins the mkdir and performs the rm+recreate; the
+    # rest fail the mkdir and back off without touching $lock_dir. The guard is
+    # held only for two local fs ops; if a reclaimer is killed mid-flight, a
+    # guard older than a few seconds is treated as abandoned (no permanent wedge).
+    local guard="${lock_dir}.reclaiming"
+    if [[ -d "$guard" ]]; then
+      local g; g="$(cat "$guard/epoch" 2>/dev/null || printf '0')"
+      [[ "$g" =~ ^[0-9]+$ ]] || g=0
+      (( now - g >= 10 )) && rm -rf "$guard" 2>/dev/null
+    fi
+    if mkdir "$guard" 2>/dev/null; then
+      date -u +%s > "$guard/epoch" 2>/dev/null || true
+      # Re-check under the guard: between our stale read and winning the guard,
+      # another reclaimer may already have refreshed the lock. If it's no longer
+      # stale, back off instead of clobbering a now-fresh lock.
+      # Missing/unreadable epoch → a racer is mid-create; treat as fresh (cur=now),
+      # consistent with the initial check, so we never clobber a just-born lock.
+      local cur; cur="$(cat "$lock_dir/epoch" 2>/dev/null || printf '')"
+      [[ "$cur" =~ ^[0-9]+$ ]] || cur="$now"
+      local rc=1
+      if (( now - cur >= stale_secs )); then
+        # Reclaim IN PLACE: overwrite the dead holder's epoch with a fresh one.
+        # We never rm+mkdir the lock dir, so it never momentarily disappears and
+        # no concurrent fresh acquire can slip into a rm→mkdir gap. (The guard
+        # already guarantees we're the only reclaimer.)
+        if date -u +%s > "$lock_dir/epoch" 2>/dev/null; then rc=0; fi
+      fi
+      rm -rf "$guard" 2>/dev/null
+      return "$rc"
     fi
   fi
   return 1

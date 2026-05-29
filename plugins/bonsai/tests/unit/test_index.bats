@@ -70,6 +70,23 @@ write_obs() {
   grep -q "2026-05-27-001" "$idx"
 }
 
+@test "index: Archived section counts files under archive/" {
+  mkdir -p "$CLAUDE_PROJECT_DIR/.claude/bonsai/archive"
+  printf -- '---\nid: 2026-05-27-090\nstatus: archived\ntitle: "A"\n---\n' \
+    > "$CLAUDE_PROJECT_DIR/.claude/bonsai/archive/2026-05-27-090-a.md"
+  printf -- '---\nid: 2026-05-27-091\nstatus: archived\ntitle: "B"\n---\n' \
+    > "$CLAUDE_PROJECT_DIR/.claude/bonsai/archive/2026-05-27-091-b.md"
+  bonsai_index_regenerate "$CLAUDE_PROJECT_DIR"
+  grep -q "Archived (2)" "$CLAUDE_PROJECT_DIR/.claude/bonsai/INDEX.md"
+}
+
+@test "index: a title containing ] keeps the markdown link valid" {
+  write_obs "2026-05-27-080" "normal" "technical" "Fix arr[0] off-by-one"
+  bonsai_index_regenerate "$CLAUDE_PROJECT_DIR"
+  # the ] in the link TEXT must be escaped so it doesn't close the [..] early
+  grep -qF 'arr[0\] off-by-one' "$CLAUDE_PROJECT_DIR/.claude/bonsai/INDEX.md"
+}
+
 @test "index: regenerate leaves no .tmp file behind" {
   bonsai_index_regenerate "$CLAUDE_PROJECT_DIR"
   run bash -c "ls $CLAUDE_PROJECT_DIR/.claude/bonsai/INDEX.md.tmp.* 2>/dev/null"

@@ -15,6 +15,16 @@ run_stop_hook_with_input() {
   printf '%s' "$input" | bash "$hook"
 }
 
+# Put a stub `claude` on PATH so dispatch never makes a real API call (the hook
+# spawns `claude -p` in the background). Without this, a machine with the real
+# claude installed would fire a live gardener — and bill the user — during tests.
+stub_claude() {
+  local d="$BATS_TEST_TMPDIR/stub-bin"; mkdir -p "$d"
+  printf '#!/usr/bin/env bash\ncat - >/dev/null\n' > "$d/claude"
+  chmod +x "$d/claude"
+  export PATH="$d:$PATH"
+}
+
 @test "stop: exits 0 silently when cwd not in whitelist" {
   local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" \
     '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
@@ -64,8 +74,6 @@ EOF
     '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
   run run_stop_hook_with_input "$input"
   [ "$status" -eq 0 ]
-  # Hook output must be empty (or {}) so CC's Stop hook schema validator accepts it
-  [[ -z "$output" || "$output" == "{}" ]]
   # Give the backgrounded gardener a moment to write its evidence (poll up to 3s)
   local i=0
   while [ ! -f "$STUB_OUT" ] && [ $i -lt 30 ]; do
@@ -73,25 +81,32 @@ EOF
     i=$((i + 1))
   done
   [ -f "$STUB_OUT" ]
+  # Hook output must be empty (or {}) for CC's Stop hook schema validator —
+  # asserted LAST with [ ] (a bare [[ ]] mid-test would not fail the test).
+  [ -z "$output" ] || [ "$output" = "{}" ]
 }
 
 @test "stop: when gates pass, updates state.json last_run_iso" {
   fixture_projects_json "$CLAUDE_PROJECT_DIR"
   fixture_state_json "1970-01-01T00:00:00Z"
+  stub_claude
   local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" \
     '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
-  run_stop_hook_with_input "$input" >/dev/null
-  local iso
-  iso="$(jq -r '.last_run_iso' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json")"
-  [[ "$iso" != "1970-01-01T00:00:00Z" ]]
+  run run_stop_hook_with_input "$input"
+  [ "$status" -eq 0 ]
+  [ -f "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json" ]
+  local iso; iso="$(jq -r '.last_run_iso' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json")"
+  [ "$iso" != "1970-01-01T00:00:00Z" ]
 }
 
 @test "stop: when gates pass, increments quota.json run counter" {
   fixture_projects_json "$CLAUDE_PROJECT_DIR"
   fixture_state_json "1970-01-01T00:00:00Z"
+  stub_claude
   local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" \
     '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
-  run_stop_hook_with_input "$input" >/dev/null
+  run run_stop_hook_with_input "$input"
+  [ "$status" -eq 0 ]
   local n
   n="$(jq -r '[.events[] | select(.kind=="run")] | length' "$CLAUDE_PLUGIN_DATA/quota.json")"
   [ "$n" = "1" ]

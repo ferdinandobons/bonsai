@@ -107,6 +107,10 @@ main() {
   local state_file="$cwd/.claude/bonsai/state.json"
   local last_run_iso; last_run_iso="$(bonsai_json_get "$state_file" '.last_run_iso')"
   [[ -z "$last_run_iso" ]] && last_run_iso="1970-01-01T00:00:00Z"
+  # Capture dedup hashes BEFORE update_last_run: on a corrupt-state rebuild it
+  # resets dedup_hashes to [], and reading after would hand the gardener an empty
+  # window, letting it re-emit recently-surfaced observations.
+  local hashes; hashes="$(jq -c '.dedup_hashes // []' "$state_file" 2>/dev/null || printf '[]')"
 
   # Update last_run + record run event BEFORE spawning so a second Stop hook
   # firing immediately (e.g. CC retrying) sees a fresh last_run and the
@@ -116,7 +120,6 @@ main() {
 
   # 7. Build the prompt input for the gardener
   local now; now="$(bonsai_now_iso)"
-  local hashes; hashes="$(jq -c '.dedup_hashes // []' "$state_file" 2>/dev/null || printf '[]')"
   local trimmed_md="$cwd/.claude/bonsai/trimmed.md"
   local trimmed_content=""
   [[ -f "$trimmed_md" ]] && trimmed_content="$(cat "$trimmed_md")"
@@ -192,7 +195,10 @@ main() {
   # user can inspect failures via:
   #   cat ~/.claude/plugins/data/bonsai-bonsai/logs/gardener-*.log
   local log_file
-  log_file="$CLAUDE_PLUGIN_DATA/logs/gardener-$(bonsai_now_basic).log"
+  # Include the hook PID so two gardeners dispatched in the same wall-clock second
+  # (e.g. different projects) don't write to — and truncate — the same log file.
+  # telemetry globs gardener-*.log, so the extra suffix is still picked up.
+  log_file="$CLAUDE_PLUGIN_DATA/logs/gardener-$(bonsai_now_basic)-$$.log"
   if ! bonsai_dispatch_gardener "$prompt_input" "$log_file" "$lock_dir"; then
     bonsai_log ERROR "stop.sh: bonsai_dispatch_gardener failed (is 'claude' on PATH?)"
     # Nothing was spawned, so release the lock now instead of waiting for the

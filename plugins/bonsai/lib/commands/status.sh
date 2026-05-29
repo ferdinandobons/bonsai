@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/_bootstrap.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/common.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/whitelist.sh"
@@ -64,6 +65,7 @@ echo "  total:               $total_tokens"
 # Gardener run health: completed vs errored, how many hit the turn cap, and the
 # peak turns used — makes any future --max-turns bump data-driven instead of
 # guesswork (see branch 2026-05-28-002).
+# shellcheck disable=SC2034  # g_total is read for positional alignment, not displayed
 read -r g_total g_completed g_errored g_maxturns g_peak \
   <<< "$(bonsai_telemetry_gardener_stats "$gardener_log_dir" "$cutoff")"
 echo

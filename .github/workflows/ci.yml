@@ -29,6 +29,7 @@ jobs:
       - name: Shellcheck
         run: |
           shellcheck -x plugins/bonsai/lib/*.sh
+          shellcheck -x plugins/bonsai/lib/commands/*.sh
           shellcheck -x plugins/bonsai/hooks/*.sh
 
       - name: Bats unit tests

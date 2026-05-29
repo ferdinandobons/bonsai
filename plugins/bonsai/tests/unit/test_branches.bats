@@ -158,6 +158,45 @@ teardown() { teardown_sandbox; }
   [ "$output" = "src/cache.ts:42" ]
 }
 
+@test "branches: a newline in severity cannot inject extra frontmatter keys" {
+  # severity is LLM-authored and written as a bare YAML scalar. A newline in it
+  # must not smuggle a second frontmatter line.
+  local obs; obs="$(jq -n '{
+    id:"2026-05-27-310", created_iso:"2026-05-27T00:00:00Z", lens:"technical",
+    severity:"normal\ninjected_key: pwned", title:"T", tldr:"x", evidence_ref:"r",
+    evidence_detail:"d", suggested_action:"a", action_brief:"b",
+    related_branch_ids:[], dedup_hash:"h"}')"
+  bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs"
+  local f; f="$(bonsai_branches_find_by_id "$CLAUDE_PROJECT_DIR" "2026-05-27-310")"
+  [ -f "$f" ]
+  # No smuggled key landed in the frontmatter.
+  run grep -c '^injected_key:' "$f"
+  [ "$output" = "0" ]
+  # severity stays a valid enum value (unknown → downgraded to normal).
+  run bonsai_branches_read_field "$f" "severity"
+  [ "$output" = "normal" ]
+}
+
+@test "branches: a backslash in the title is escaped in the YAML scalar" {
+  # JSON "C:\\\\tmp" decodes to a single backslash; the YAML writer must escape
+  # it so a double-quoted-string parser doesn't read \t as a tab.
+  local obs; obs="$(jq -n '{
+    id:"2026-05-27-311", created_iso:"2026-05-27T00:00:00Z", lens:"technical",
+    severity:"normal", title:"path C:\\tmp", tldr:"x", evidence_ref:"r",
+    evidence_detail:"d", suggested_action:"a", action_brief:"b",
+    related_branch_ids:[], dedup_hash:"h"}')"
+  bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs"
+  local f; f="$(bonsai_branches_find_by_id "$CLAUDE_PROJECT_DIR" "2026-05-27-311")"
+  grep -qF 'title: "path C:\\tmp"' "$f"   # backslash doubled in the raw file
+}
+
+@test "branches: find_by_id rejects a glob id instead of matching unrelated files" {
+  local obs='{"id":"2026-05-27-312","created_iso":"2026-05-27T00:00:00Z","lens":"technical","severity":"normal","title":"Real","tldr":"x","evidence_ref":"r","evidence_detail":"d","suggested_action":"a","action_brief":"b","related_branch_ids":[],"dedup_hash":"h"}'
+  bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs"
+  run bonsai_branches_find_by_id "$CLAUDE_PROJECT_DIR" "*"   # must NOT glob-match the real file
+  [ "$status" -eq 1 ]
+}
+
 @test "branches: set_status rejects invalid status with log" {
   local obs='{"id":"2026-05-27-202","title":"X","created_iso":"2026-05-27T00:00:00Z","lens":"technical","severity":"normal","tldr":"x","evidence_ref":"r","evidence_detail":"d","suggested_action":"a","action_brief":"b","related_branch_ids":[],"dedup_hash":"h"}'
   bonsai_branches_write "$CLAUDE_PROJECT_DIR" "$obs"

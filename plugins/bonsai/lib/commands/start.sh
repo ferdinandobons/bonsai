@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016  # jq filter strings use $var (jq vars), not shell expansion
 set -e
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/_bootstrap.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/common.sh"
 source "${CLAUDE_PLUGIN_ROOT}/lib/whitelist.sh"

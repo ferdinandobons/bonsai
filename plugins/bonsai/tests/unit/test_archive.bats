@@ -51,6 +51,15 @@ EOF
   [ -f "$CLAUDE_PROJECT_DIR/.claude/bonsai/archive/2026-01-02-001-x.md" ]
 }
 
+@test "archive: a moved branch gets status archived in its frontmatter" {
+  make_branch "2026-01-09-001" "kept" "20"
+  bonsai_archive_run "$CLAUDE_PROJECT_DIR"
+  local f="$CLAUDE_PROJECT_DIR/.claude/bonsai/archive/2026-01-09-001-x.md"
+  [ -f "$f" ]
+  run bonsai_branches_read_field "$f" "status"
+  [ "$output" = "archived" ]
+}
+
 @test "archive: open branches are never archived" {
   make_branch "2026-01-03-001" "open" "999"
   bonsai_archive_run "$CLAUDE_PROJECT_DIR"

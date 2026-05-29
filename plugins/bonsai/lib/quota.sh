@@ -25,6 +25,14 @@ bonsai_quota_record_event() {
   local file; file="$(_bonsai_quota_file)"
   local now; now="$(date -u +%s)"
   local cutoff=$(( now - 86400 ))
+  # NOTE (tolerated race): quota.json is global. This read-modify-write is not
+  # locked, so two gardeners from DIFFERENT projects (each holding only its own
+  # per-project lock) can race here and drop one event, undercounting a counter
+  # by one. This is the same tolerated race documented for projects.json in
+  # whitelist.sh; we accept it rather than add a global write-lock whose own
+  # failure modes (orphaned locks, added hook latency) would be worse for a
+  # silent between-turns hook. Same-project concurrency is already serialized by
+  # the gardener lock, and the bound (±1 event) never breaks gating materially.
   # Prune-then-append in one jq pass so we never read stale entries again.
   # Use if-guard so callers with set -E (bats) don't trap on corrupt JSON.
   local updated=""
@@ -153,9 +161,18 @@ bonsai_quota_update_last_run() {
   fi
   if [[ -z "$updated" ]]; then
     [[ -f "$state" ]] && bonsai_log WARN "quota_update_last_run: corrupt or missing state.json, rebuilding"
-    local fresh
-    fresh="$(jq -n --arg t "$now" --arg h "$diff_hash" \
-      '{"__version":1,"last_run_iso":$t,"dedup_hashes":[]} + (if $h != "" then {"last_diff_hash":$h} else {} end)')"
+    # Guard the rebuild jq exactly like the update path and the dedup init: if jq
+    # fails (e.g. missing/erroring), an unchecked empty result would atomically
+    # overwrite state.json with an empty file, silently wiping dedup_hashes.
+    local fresh=""
+    if ! fresh="$(jq -n --arg t "$now" --arg h "$diff_hash" \
+      '{"__version":1,"last_run_iso":$t,"dedup_hashes":[]} + (if $h != "" then {"last_diff_hash":$h} else {} end)' 2>/dev/null)"; then
+      fresh=""
+    fi
+    if [[ -z "$fresh" ]]; then
+      bonsai_log ERROR "quota_update_last_run: jq failed building fresh state, leaving $state untouched"
+      return 1
+    fi
     bonsai_json_write "$state" "$fresh"
   else
     bonsai_json_write "$state" "$updated"

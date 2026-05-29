@@ -18,6 +18,7 @@ _bonsai_index_section() {
     local id t rel
     id="$(bonsai_branches_read_field "$f" "id")"
     t="$(bonsai_branches_read_field "$f" "title")"
+    t="${t//]/\\]}"   # escape ] so a title can't close the [link text] early
     rel="branches/$(basename "$f")"
     printf -- '- [%s — %s](%s)\n' "$id" "$t" "$rel"
   done
@@ -30,7 +31,7 @@ bonsai_index_regenerate() {
   bonsai_ensure_dir "$dir/branches" || return 1
   local idx="$dir/INDEX.md"
 
-  local -a crit norm low kept trimmed archived
+  local -a crit norm low kept trimmed
   shopt -s nullglob
   for f in "$dir/branches"/*.md; do
     local sev status
@@ -52,10 +53,17 @@ bonsai_index_regenerate() {
         ;;
       kept)     kept+=("$f") ;;
       trimmed)  trimmed+=("$f") ;;
-      archived) archived+=("$f") ;;
     esac
   done
   shopt -u nullglob
+
+  # Archived branches are moved OUT to archive/ (see archive.sh), so report their
+  # COUNT without listing them — keeps INDEX.md from growing unbounded as archives
+  # accumulate, while still telling the user how many archived observations exist.
+  shopt -s nullglob
+  local -a _archived=("$dir/archive"/*.md)
+  shopt -u nullglob
+  local archived_count=${#_archived[@]}
 
   # Atomic write: tmp + mv so readers never see a half-written INDEX.md.
   local tmp
@@ -68,7 +76,7 @@ bonsai_index_regenerate() {
     _bonsai_index_section "⚪ Open low"      "${low[@]}"
     _bonsai_index_section "✅ Kept"          "${kept[@]}"
     _bonsai_index_section "🚫 Trimmed"       "${trimmed[@]}"
-    _bonsai_index_section "🗄 Archived"      "${archived[@]}"
+    printf '## 🗄 Archived (%d)\n\n' "$archived_count"
   } > "$tmp"; then
     rm -f "$tmp"
     return 1

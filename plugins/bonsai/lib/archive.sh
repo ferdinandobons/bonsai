@@ -67,10 +67,19 @@ bonsai_archive_run() {
       *) continue ;;
     esac
     local mtime; mtime="$(bonsai_file_mtime_epoch "$f")"
+    # A failed stat returns 0 → a ~20000-day age that would archive a brand-new
+    # branch. Skip rather than misfile a fresh observation.
+    if [[ "$mtime" -eq 0 ]]; then
+      bonsai_log WARN "archive: skipping $(basename "$f") (mtime unreadable)"
+      continue
+    fi
     local age_days=$(( (now - mtime) / 86400 ))
     if [[ "$age_days" -ge "$thr" ]]; then
+      # Mark archived in the frontmatter BEFORE moving, so the file under archive/
+      # carries an accurate status instead of a stale kept/trimmed.
+      bonsai_branches_set_status "$f" "archived"
       mv "$f" "$arc/"
-      bonsai_log INFO "archive: moved $(basename "$f") (status=$status, age=${age_days}d)"
+      bonsai_log INFO "archive: moved $(basename "$f") (was $status, age=${age_days}d)"
     fi
   done
   shopt -u nullglob

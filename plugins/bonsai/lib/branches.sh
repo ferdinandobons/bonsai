@@ -81,6 +81,15 @@ bonsai_branches_write() {
     esac
   done
 
+  # Defense-in-depth for the bare (unquoted) YAML scalars written below: strip
+  # newlines from LLM-authored id/lens/severity so a stray newline can't inject a
+  # second frontmatter line, and clamp severity to the known enum (unknown →
+  # normal, the documented "when in doubt, downgrade" default).
+  id="$(_bonsai_yaml_sanitize_oneline "$id")"
+  lens="$(_bonsai_yaml_sanitize_oneline "$lens")"
+  severity="$(_bonsai_yaml_sanitize_oneline "$severity")"
+  case "$severity" in critical|normal|low) ;; *) severity="normal" ;; esac
+
   local slug; slug="$(bonsai_slugify "$title")"
   local dir; dir="$(_bonsai_branches_dir "$project_dir")"
   bonsai_ensure_dir "$dir" || return 1
@@ -88,8 +97,10 @@ bonsai_branches_write() {
   # YAML safety: quote the title (it's user/LLM text and may contain colons).
   # Escape internal " and strip newlines so the frontmatter stays single-line.
   local safe_title; safe_title="$(_bonsai_yaml_sanitize_oneline "$title")"
+  safe_title="${safe_title//\\/\\\\}"   # escape backslashes BEFORE quotes (\t etc.)
   safe_title="${safe_title//\"/\\\"}"
   local safe_evidence; safe_evidence="$(_bonsai_yaml_sanitize_oneline "$evidence_ref")"
+  safe_evidence="${safe_evidence//\\/\\\\}"
   safe_evidence="${safe_evidence//\"/\\\"}"
 
   # Day component used to reallocate a colliding id. Derive it from the proposed
@@ -196,7 +207,7 @@ bonsai_branches_set_status() {
   esac
   local tmp
   tmp="$(mktemp "${file}.tmp.XXXXXX")" || return 1
-  awk -v ns="$new_status" '
+  if awk -v ns="$new_status" '
     BEGIN { in_fm=0; done=0 }
     /^---$/ {
       in_fm = !in_fm
@@ -209,12 +220,19 @@ bonsai_branches_set_status() {
       next
     }
     { print }
-  ' "$file" > "$tmp" && mv "$tmp" "$file"
+  ' "$file" > "$tmp"; then
+    mv "$tmp" "$file" || { rm -f "$tmp"; return 1; }
+  else
+    rm -f "$tmp"; return 1
+  fi
 }
 
 bonsai_branches_find_by_id() {
   local project_dir="$1"
   local id="$2"
+  # Reject a non-literal id so a glob/metacharacter (e.g. "*") in a CLI argument
+  # can't turn `-name "${id}-*.md"` into a wildcard matching an unrelated branch.
+  [[ "$id" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{3}$ ]] || return 1
   local dir; dir="$(_bonsai_branches_dir "$project_dir")"
   [[ -d "$dir" ]] || return 1
   local hit; hit="$(find "$dir" -maxdepth 1 -name "${id}-*.md" -print -quit 2>/dev/null)"

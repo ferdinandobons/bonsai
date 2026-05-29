@@ -34,7 +34,7 @@ teardown() { teardown_sandbox; }
   grep -q "## Action brief" "$f"
 }
 
-@test "branches: write never overwrites an existing id (collision → reassign)" {
+@test "branches: write never overwrites an existing id (collision -> reassign)" {
   # Two observations propose the SAME id (as the LLM gardener does today).
   # The second write must NOT clobber the first: it reassigns to the next free
   # id and returns the resolved path.
@@ -55,7 +55,7 @@ teardown() { teardown_sandbox; }
   id2="$(bonsai_branches_read_field "$f2" "id")"
   [ "$id1" = "2026-05-27-001" ]
   [ "$id2" != "2026-05-27-001" ]
-  # Exactly two branch files on disk → no silent clobber.
+  # Exactly two branch files on disk -> no silent clobber.
   local count; count="$(find "$CLAUDE_PROJECT_DIR/.claude/bonsai/branches" -name '*.md' | wc -l | tr -d ' ')"
   [ "$count" -eq 2 ]
 }
@@ -172,7 +172,7 @@ teardown() { teardown_sandbox; }
   # No smuggled key landed in the frontmatter.
   run grep -c '^injected_key:' "$f"
   [ "$output" = "0" ]
-  # severity stays a valid enum value (unknown → downgraded to normal).
+  # severity stays a valid enum value (unknown -> downgraded to normal).
   run bonsai_branches_read_field "$f" "severity"
   [ "$output" = "normal" ]
 }

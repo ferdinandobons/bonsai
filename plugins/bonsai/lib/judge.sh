@@ -53,6 +53,12 @@ bonsai_judge_parse() {
   json="$(printf '%s' "$raw" | tr '\n' '\036' \
     | sed -E 's/^[^{]*//; s/[^}]*$//' | tr '\036' '\n')"
   [[ -z "$json" ]] && return 1
-  printf '%s' "$json" \
-    | jq -r '.verdicts[] | "\(.candidate_index) \(.keep) \(.severity)"' 2>/dev/null
+  # pipefail in a subshell so the function's exit reflects jq (nonzero when the
+  # reply has no valid verdicts → caller fails open), not the trailing `tr`. The
+  # `tr -d '\r'` strips the CR that jq.exe emits on Windows (text-mode stdout),
+  # which would otherwise leave a stray \r on each parsed verdict line.
+  ( set -o pipefail
+    printf '%s' "$json" \
+      | jq -r '.verdicts[] | "\(.candidate_index) \(.keep) \(.severity)"' 2>/dev/null \
+      | tr -d '\r' )
 }

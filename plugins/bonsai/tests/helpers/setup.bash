@@ -8,7 +8,11 @@ export BONSAI_PLUGIN_ROOT
 
 # Per-test sandbox dirs (cleaned up in teardown)
 setup_sandbox() {
-  BONSAI_TEST_TMP="$(mktemp -d "${TMPDIR:-/tmp}/bonsai-test.XXXXXX")"
+  # Base the sandbox on bats' own per-test tmpdir when available: it is a clean,
+  # platform-correct POSIX path on every OS. On Windows/Git Bash $TMPDIR is a
+  # native path (e.g. C:\Users\…\Temp) whose backslashes and drive colon break
+  # the mktemp template, so it's only the last-resort fallback.
+  BONSAI_TEST_TMP="$(mktemp -d "${BATS_TEST_TMPDIR:-${TMPDIR:-/tmp}}/bonsai-test.XXXXXX")"
   export BONSAI_TEST_TMP
   export CLAUDE_PLUGIN_ROOT="$BONSAI_PLUGIN_ROOT"
   export CLAUDE_PLUGIN_DATA="$BONSAI_TEST_TMP/plugin-data"

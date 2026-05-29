@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Cross-platform CI**: the test suite now runs on macOS and Windows (Git Bash)
+  in addition to Linux. CI previously ran on Linux only — which is how an earlier
+  release shipped a platform regression undetected. The matrix runs shellcheck +
+  unit tests on all three OSes and the integration suite on the POSIX platforms.
+- **`.gitattributes`**: pins every text file to LF endings. On Windows, Git's
+  default `core.autocrlf=true` would otherwise rewrite the shell scripts to CRLF
+  on checkout, breaking bash (a CR in a shebang or `[[ … ]]` compare) the moment
+  a hook fired.
+- **status.sh**: a dedicated **Errors** section that surfaces *any* startup or
+  execution error from one place. It reports the count of hook errors
+  (stop.sh / remind.sh, from `bonsai-errors.log`) and gardener execution errors
+  (from the per-run logs) over the last 24h, plus the most recent few lines of
+  each with their messages — previously only the single last `bonsai-errors.log`
+  line was shown and gardener failures carried no detail.
+- **telemetry.sh**: `bonsai_telemetry_gardener_errors` extracts recent errored
+  gardener runs (subtype + flattened, truncated message), including
+  unparseable/partial logs from a claude that died mid-write.
+
 ### Fixed
 - **dedup.sh**: `bonsai_dedup_add` appended unconditionally, so a retried emit
   duplicated an observation's hash in the rolling window (observed in the wild:

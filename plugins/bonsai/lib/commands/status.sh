@@ -75,9 +75,37 @@ echo "  errored:          $g_errored"
 echo "  hit max-turns:    $g_maxturns"
 echo "  peak turns used:  $g_peak"
 
+# Startup / execution errors. Two independent sources, both surfaced here so any
+# failure is visible from `/bonsai:status` without digging through log files:
+#   - Hook failures (stop.sh, remind.sh — i.e. startup/SessionStart and the Stop
+#     dispatcher) are recorded in bonsai-errors.log by their ERR traps.
+#   - Gardener subprocess failures live in the per-run gardener-*.log result JSON
+#     and never reach bonsai-errors.log, so they're pulled separately.
+echo
+echo "Errors:"
 err_log="${CLAUDE_PLUGIN_DATA}/logs/bonsai-errors.log"
+# ISO-8601 UTC timestamps sort lexically, so a string compare bounds the 24h
+# window (bonsai_log prefixes every line with bonsai_now_iso).
+cutoff_iso=$(date -u -v-1d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "1 day ago" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)
+hook_err_count=0
+hook_err_recent=""
 if [ -f "$err_log" ]; then
-  recent_err=$(tail -1 "$err_log")
-  echo
-  echo "Last error: $recent_err"
+  hook_err_count=$(awk -v c="$cutoff_iso" '$1 >= c {n++} END{print n+0}' "$err_log")
+  [ "$hook_err_count" -gt 0 ] && hook_err_recent="$(awk -v c="$cutoff_iso" '$1 >= c' "$err_log" | tail -n 3)"
 fi
+gardener_errs="$(bonsai_telemetry_gardener_errors "$gardener_log_dir" "$cutoff" 3)"
+echo "  hook errors (24h):    $hook_err_count"
+echo "  gardener errors (24h): $g_errored"
+if [ -n "$hook_err_recent" ] || [ -n "$gardener_errs" ]; then
+  echo "  recent:"
+  # Full `if` blocks, not `[ … ] && …`: under `set -e` a trailing AND-list whose
+  # test fails (e.g. no gardener errors) would make this the script's last command
+  # and leak a non-zero exit. An untaken `if` is a clean exit 0.
+  if [ -n "$hook_err_recent" ]; then printf '%s\n' "$hook_err_recent" | sed 's/^/    hook: /'; fi
+  if [ -n "$gardener_errs" ]; then printf '%s\n' "$gardener_errs" | sed 's/^/    gardener: /'; fi
+else
+  echo "  recent:               none"
+fi
+
+# The status command must never report failure just because it summarized errors.
+exit 0

@@ -39,6 +39,39 @@ write_obs() {
   echo "$output" | grep -q "Quota:"
 }
 
+@test "cmd status: reports no errors on a clean install" {
+  start_project
+  run cmd status
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "Errors:"
+  echo "$output" | grep -q "hook errors (24h):    0"
+  echo "$output" | grep -q "recent:               none"
+}
+
+@test "cmd status: surfaces a recent hook error from bonsai-errors.log" {
+  start_project
+  mkdir -p "$CLAUDE_PLUGIN_DATA/logs"
+  # bonsai_log writes ERROR lines here; simulate a fresh startup/execution failure.
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s [ERROR] stop.sh trap: line 42 (boom)\n' "$ts" > "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log"
+  run cmd status
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "hook errors (24h):    1"
+  echo "$output" | grep -q "hook: .*stop.sh trap: line 42 (boom)"
+}
+
+@test "cmd status: surfaces a gardener execution error" {
+  start_project
+  mkdir -p "$CLAUDE_PLUGIN_DATA/logs"
+  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+  jq -n '{subtype:"error_during_execution", num_turns:3, result:"model wedged", usage:{}}' \
+    > "$CLAUDE_PLUGIN_DATA/logs/gardener-${ts}.log"
+  run cmd status
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "gardener errors (24h): 1"
+  echo "$output" | grep -q "gardener: .*error_during_execution: model wedged"
+}
+
 # --- list -------------------------------------------------------------------
 
 @test "cmd list: reports nothing when there are no open observations" {

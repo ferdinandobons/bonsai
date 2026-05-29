@@ -55,15 +55,19 @@ teardown() { teardown_sandbox; }
   local now; now="$(date -u +%s)"
   local old=$(( now - 100000 ))
   local recent=$(( now - 100 ))
+  # Slash-free scope key: a fixture stores it as a jq literal but the lib looks
+  # it up via `jq --arg`, and Git Bash converts POSIX-looking ("/p") --arg values
+  # to Windows paths, desyncing the two. A key with no leading slash is immune and
+  # is just as valid for this opaque-key logic.
   jq -n --argjson o "$old" --argjson r "$recent" '{
     "__version":1,
     "events":[
-      {"kind":"run","scope":"/p","epoch":$o},
-      {"kind":"run","scope":"/p","epoch":$r},
-      {"kind":"run","scope":"/p","epoch":$r}
+      {"kind":"run","scope":"p","epoch":$o},
+      {"kind":"run","scope":"p","epoch":$r},
+      {"kind":"run","scope":"p","epoch":$r}
     ]
   }' > "$CLAUDE_PLUGIN_DATA/quota.json"
-  run bonsai_quota_count_events_24h "run" "/p"
+  run bonsai_quota_count_events_24h "run" "p"
   [ "$output" = "2" ]
 }
 
@@ -102,10 +106,13 @@ teardown() { teardown_sandbox; }
 @test "quota: caps_ok false when per-project runs reach 10" {
   local now; now="$(date -u +%s)"
   local recent=$(( now - 60 ))
+  # Slash-free scope/project key — see the count_events_24h test above for why a
+  # leading-slash key desyncs fixture literals from the lib's `jq --arg` lookups
+  # under Git Bash.
   local events; events="$(jq -n --argjson r "$recent" '
-    [range(0;10) | {"kind":"run","scope":"/p","epoch":$r}]')"
+    [range(0;10) | {"kind":"run","scope":"p","epoch":$r}]')"
   jq -n --argjson e "$events" '{"__version":1,"events":$e}' > "$CLAUDE_PLUGIN_DATA/quota.json"
-  CLAUDE_PROJECT_DIR=/p run bonsai_quota_caps_ok
+  CLAUDE_PROJECT_DIR=p run bonsai_quota_caps_ok
   [ "$status" -eq 1 ]
 }
 

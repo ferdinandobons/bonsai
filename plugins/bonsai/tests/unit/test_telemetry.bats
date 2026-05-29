@@ -45,6 +45,52 @@ make_log() {
   [ "$output" = "1 0 1 0 0" ]
 }
 
+@test "telemetry: gardener_errors lists errored runs with subtype and message" {
+  jq -n '{subtype:"success", result:"all good"}'                 > "$LOGS/gardener-20260528T100000Z.log"
+  jq -n '{subtype:"error_during_execution", result:"boom: tool X failed"}' > "$LOGS/gardener-20260528T101000Z.log"
+  jq -n '{subtype:"error_max_turns"}'                            > "$LOGS/gardener-20260528T102000Z.log"
+  run bonsai_telemetry_gardener_errors "$LOGS"
+  [ "$status" -eq 0 ]
+  # Success is excluded; both errors are listed, most recent last.
+  echo "$output" | grep -q "error_during_execution: boom: tool X failed"
+  echo "$output" | grep -q "error_max_turns:"
+  ! echo "$output" | grep -q "all good"
+}
+
+@test "telemetry: gardener_errors surfaces an unparseable (partial) log" {
+  printf 'Traceback: claude died mid-write\nmore junk' > "$LOGS/gardener-20260528T130000Z.log"
+  run bonsai_telemetry_gardener_errors "$LOGS"
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q "unparseable: Traceback: claude died mid-write"
+}
+
+@test "telemetry: gardener_errors respects the cutoff and max-lines cap" {
+  jq -n '{subtype:"error_during_execution", result:"old"}' > "$LOGS/gardener-20260101T000000Z.log"
+  jq -n '{subtype:"error_during_execution", result:"e1"}'  > "$LOGS/gardener-20260528T100000Z.log"
+  jq -n '{subtype:"error_during_execution", result:"e2"}'  > "$LOGS/gardener-20260528T101000Z.log"
+  jq -n '{subtype:"error_during_execution", result:"e3"}'  > "$LOGS/gardener-20260528T102000Z.log"
+  run bonsai_telemetry_gardener_errors "$LOGS" "20260528T000000Z" 2
+  [ "$status" -eq 0 ]
+  # Old log excluded by cutoff; only the 2 most recent of the remaining three.
+  [ "${#lines[@]}" -eq 2 ]
+  ! echo "$output" | grep -q "old"
+  echo "$output" | grep -q "e2"
+  echo "$output" | grep -q "e3"
+}
+
+@test "telemetry: gardener_errors is empty when all runs succeeded" {
+  make_log "20260528T100000Z" "success" 4
+  run bonsai_telemetry_gardener_errors "$LOGS"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "telemetry: gardener_errors on a missing dir is empty" {
+  run bonsai_telemetry_gardener_errors "$CLAUDE_PLUGIN_DATA/nope"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
 @test "telemetry: token_usage sums the four buckets over the window" {
   jq -n '{usage:{input_tokens:10,output_tokens:5,cache_read_input_tokens:100,cache_creation_input_tokens:20}}' > "$LOGS/gardener-20260528T100000Z.log"
   jq -n '{usage:{input_tokens:1,output_tokens:2,cache_read_input_tokens:3,cache_creation_input_tokens:4}}' > "$LOGS/gardener-20260528T110000Z.log"

@@ -58,6 +58,15 @@ Restart Claude Code or run `/plugin` to reload.
 
 </details>
 
+## Requirements
+
+Bonsai's hooks are bash scripts and need `bash` and [`jq`](https://jqlang.github.io/jq/) on `PATH`.
+
+- **macOS / Linux** — both ship `bash`; install `jq` (`brew install jq` / `apt install jq`) if it isn't already present. BSD (macOS) and GNU (Linux) differences in `date`, `stat`, and `shasum`/`sha256sum` are handled internally.
+- **Windows** — runs under **Git Bash** (bundled with [Git for Windows](https://gitforwindows.org/)), the same shell Claude Code uses for command hooks. `jq` must be on `PATH` (`winget install jqlang.jq` or `choco install jq`).
+
+CI exercises the test suite on Linux, macOS, and Windows on every change.
+
 ## Activate on a project
 
 ```bash
@@ -162,7 +171,7 @@ Bonsai writes only inside `${CLAUDE_PROJECT_DIR}/.claude/bonsai/` and `${CLAUDE_
 ## Trust posture
 
 - **Read-only on your code, always.** The gardener has no `Edit` tool.
-- **Silent failure.** Every error path exits 0. Bonsai never disturbs a session, even when broken. Errors are written to `${CLAUDE_PLUGIN_DATA}/logs/bonsai-errors.log`.
+- **Silent failure.** Every error path exits 0. Bonsai never disturbs a session, even when broken. Startup and execution errors are written to `${CLAUDE_PLUGIN_DATA}/logs/bonsai-errors.log` (hooks) and the per-run gardener logs, and both are surfaced under the **Errors** section of `/bonsai:status` so a silently-broken install is still visible.
 - **File system is the source of truth.** Chips and push notifications are derivative. The markdown log under `.claude/bonsai/` always wins.
 
 ## License

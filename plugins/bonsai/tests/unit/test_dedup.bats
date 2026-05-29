@@ -69,7 +69,7 @@ teardown() { teardown_sandbox; }
   [ "$output" = "h-05" ]
 }
 
-@test "dedup: add is idempotent — same hash twice yields a single entry" {
+@test "dedup: add is idempotent -- same hash twice yields a single entry" {
   bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "dupe"
   bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "dupe"
   run jq -r '[.dedup_hashes[] | select(. == "dupe")] | length' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"

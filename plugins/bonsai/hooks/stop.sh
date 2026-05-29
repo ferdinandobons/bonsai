@@ -74,7 +74,7 @@ main() {
   # last_diff_hash and wrongly trigger the idle cadence.
   if [[ -n "$cur_diff_hash" && "$cur_diff_hash" == "$last_diff_hash" ]]; then
     local idle_minutes=20
-    local cfg_idle="$(bonsai_config_file "$cwd")"
+    local cfg_idle; cfg_idle="$(bonsai_config_file "$cwd")"
     if [[ -f "$cfg_idle" ]]; then
       local iv; iv="$(jq -r '.throttle_idle_minutes // 20' "$cfg_idle" 2>/dev/null)"
       [[ "$iv" =~ ^[0-9]+$ ]] && idle_minutes="$iv"
@@ -121,7 +121,7 @@ main() {
   local trimmed_content=""
   [[ -f "$trimmed_md" ]] && trimmed_content="$(cat "$trimmed_md")"
 
-  local cfg_file="$(bonsai_config_file "$cwd")"
+  local cfg_file; cfg_file="$(bonsai_config_file "$cwd")"
   local model="claude-sonnet-4-6"
   local lenses='["technical","strategic","workflow"]'
   local transcript_tail_lines=200

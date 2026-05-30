@@ -6,9 +6,9 @@
 
 When you ask, you mostly catch what you remember to look for.
 
-Bonsai is a Claude Code plugin that adds the missing half of the loop. After each turn of your session, a patient observer reads what just happened and emits a tiny, high-signal observation when (and only when) one is worth your time. A latent bug you missed. An architectural decision you made without noticing. A workflow pattern quietly costing you an hour a day.
+Bonsai is a Claude Code plugin that acts as a patient gardener for your code. After each turn of your session it silently observes what just happened and — only when it finds something that truly matters — leaves you a single observation: a latent bug you missed, a risky architectural decision you made without noticing, a workflow friction quietly costing you an hour a day.
 
-It runs silently in the background. It says nothing most of the time. It speaks only when the signal is high. **Silence beats noise** is its hard rule.
+It never touches your code. It runs in the background, independent of your session, and stays quiet most of the time. It speaks only when the signal is high. **Silence beats noise** is its hard rule — and the reason it's worth leaving on.
 
 ## The proof
 
@@ -102,7 +102,7 @@ That is the entire setup. Bonsai now watches this project silently. The interval
 
 ## How it works
 
-After each turn of Claude Code, a `Stop` hook script runs. It clears four gates in order: whitelist, mute, throttle, daily quota. If any gate fails, it exits silently with no effect on your session.
+After each turn of Claude Code, a `Stop` hook script runs. It clears five gates in order — **whitelist** (is this project watched?), **mute** (silenced by you?), **throttle** (enough time since the last check?), **quota** (under the daily cap, per-project and global?), and a **per-project lock** (no other gardener already running?). If any gate fails, it exits silently with no effect on your session.
 
 If all gates pass, the hook:
 
@@ -111,11 +111,12 @@ If all gates pass, the hook:
 
 The gardener then, in its own headless context:
 
-1. Reads the sliced transcript and the project state since the last run.
+1. Reads the `git diff` and the sliced transcript, plus the files changed since its last run.
 2. Picks one of three lenses: **technical** (bug patterns, security risks, performance smells, test gaps), **strategic** (architectural decision points, scope creep, unanswered questions), **workflow** (repeated steps that should be automated, missing slash commands).
-3. Generates between zero and three observations. **Zero is the most common correct answer.**
-4. Writes survivors to `.claude/bonsai/branches/<id>-<slug>.md` with full frontmatter and an action brief.
-5. Regenerates `.claude/bonsai/INDEX.md` so new observations show up in `/bonsai:list` and your editor immediately.
+3. Drafts candidate observations against a hard quality bar, then filters them: it drops anything it already surfaced (a rolling hash window) or a theme you previously dismissed (the anti-pattern log).
+4. Runs the survivors past a cheap second model (Haiku) that catches semantic duplicates the hash check misses and calibrates each observation's severity.
+5. Writes between zero and three survivors to `.claude/bonsai/branches/<id>-<slug>.md`, each with full frontmatter and a self-contained action brief. **Zero is the most common correct answer.**
+6. Regenerates `.claude/bonsai/INDEX.md` so new observations show up in `/bonsai:list` and your editor immediately, then archives stale branches and rotates its own logs.
 
 Observations live as readable markdown files inside each project. Commit them to git if you want a team-shared journal, or gitignore them if you want them private. Your choice, project by project.
 
@@ -134,7 +135,7 @@ Reading is pull, not push: you read observations when you choose to, with `/bons
 
 Only **critical** observations trigger it (silence still beats noise), it shows once per session, and a muted project stays silent. Reading the finding is always your move — the reminder just points.
 
-Each gardener run is capped at 25 iterations and uses your Agent SDK credit (included with Claude Pro/Max/Team/Enterprise plans). Token usage per project, per day, is visible via `/bonsai:status`.
+Each gardener run is capped at 25 iterations and runs on the model you configure — Sonnet by default, changeable with `/bonsai:config gardener_model <name>` or `--model` on `/bonsai:start`. It uses your Agent SDK credit (included with Claude Pro/Max/Team/Enterprise plans); token usage per project, per day, is visible via `/bonsai:status`.
 
 ## Uninstall
 
@@ -163,7 +164,7 @@ Bonsai writes only inside `${CLAUDE_PROJECT_DIR}/.claude/bonsai/` and `${CLAUDE_
 
 - **Read-only on your code, always.** The gardener has no `Edit` tool.
 - **Silent failure.** Every error path exits 0. Bonsai never disturbs a session, even when broken. Errors are written to `${CLAUDE_PLUGIN_DATA}/logs/bonsai-errors.log`.
-- **File system is the source of truth.** Chips and push notifications are derivative. The markdown log under `.claude/bonsai/` always wins.
+- **File system is the source of truth.** The return reminder only points at findings; the markdown log under `.claude/bonsai/` is the record, and it always wins.
 
 ## License
 

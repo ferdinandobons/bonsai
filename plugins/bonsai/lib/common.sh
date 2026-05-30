@@ -28,7 +28,15 @@ bonsai_state_file()  { printf '%s/.claude/bonsai/state.json' "$1"; }
 bonsai_config_file() { printf '%s/.claude/bonsai/config.json' "$1"; }
 
 # sha256 hex digest of stdin. macOS ships `shasum`; Linux ships `sha256sum`.
-bonsai_sha256() { { shasum -a 256 2>/dev/null || sha256sum; } | awk '{print $1}'; }
+# Returns 1 (no output) if BOTH are unavailable, so callers can tell a real
+# digest from an empty one instead of silently propagating a blank hash (which
+# would collapse every project to the same lock/dedup key).
+bonsai_sha256() {
+  local h
+  h="$({ shasum -a 256 2>/dev/null || sha256sum 2>/dev/null; } | awk '{print $1}')"
+  [[ -n "$h" ]] || return 1
+  printf '%s\n' "$h"
+}
 
 # File mtime in epoch seconds, cross-platform. GNU `stat -c %Y` first, then BSD
 # `stat -f %m`; on Linux `stat -f` is a filesystem flag that succeeds but prints
@@ -125,7 +133,8 @@ bonsai_slugify() {
     printf '%s' "$s" \
       | tr '[:upper:]' '[:lower:]' \
       | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' \
-      | cut -c1-40
+      | cut -c1-40 \
+      | sed -E 's/-+$//'
   )"
   if [[ -z "$out" ]]; then
     printf 'untitled'

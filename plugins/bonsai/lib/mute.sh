@@ -19,6 +19,9 @@ bonsai_mute_parse_duration() {
   if [[ "$d" =~ ^([0-9]+)([mhd])$ ]]; then
     local n="${BASH_REMATCH[1]}"
     local u="${BASH_REMATCH[2]}"
+    # Reject a zero duration (0m/0h/0d): it would write mute_until = now, an
+    # already-expired mute that reports OK while silencing nothing.
+    [[ "$n" -eq 0 ]] && return 1
     case "$u" in
       m) printf '%d' $((n * 60)) ;;
       h) printf '%d' $((n * 3600)) ;;

@@ -25,6 +25,9 @@ bonsai_archive_purge_transient() {
   for f in "$data_dir/sliced/"sliced-*.jsonl "$data_dir/logs/"gardener-*.log; do
     [[ -f "$f" ]] || continue
     mtime="$(bonsai_file_mtime_epoch "$f")"
+    # A failed stat returns 0 → a ~20000-day age that would purge a brand-new
+    # transient file. Skip on an unreadable mtime, mirroring bonsai_archive_run.
+    if [[ "$mtime" -eq 0 ]]; then continue; fi
     age=$(( now - mtime ))
     if (( age >= cutoff )); then
       rm -f "$f" 2>/dev/null \
@@ -83,9 +86,14 @@ bonsai_archive_run() {
     if [[ "$age_days" -ge "$thr" ]]; then
       # Mark archived in the frontmatter BEFORE moving, so the file under archive/
       # carries an accurate status instead of a stale kept/trimmed.
-      bonsai_branches_set_status "$f" "archived"
-      mv "$f" "$arc/"
-      bonsai_log INFO "archive: moved $(basename "$f") (was $status, age=${age_days}d)"
+      # If the status stamp fails, skip the move rather than archive a file that
+      # still carries a stale kept/trimmed status (next pass retries it).
+      if bonsai_branches_set_status "$f" "archived"; then
+        mv "$f" "$arc/" \
+          && bonsai_log INFO "archive: moved $(basename "$f") (was $status, age=${age_days}d)"
+      else
+        bonsai_log WARN "archive: set_status failed for $(basename "$f"), skipping move"
+      fi
     fi
   done
   shopt -u nullglob

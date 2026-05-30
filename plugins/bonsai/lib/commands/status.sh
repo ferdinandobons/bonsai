@@ -30,7 +30,7 @@ g_obs=$(bonsai_quota_count_events_24h "observation")
 
 cfg="$(bonsai_config_file "$cwd")"
 model="claude-sonnet-4-6"
-[ -f "$cfg" ] && model="$(jq -r '.gardener_model' "$cfg")"
+[ -f "$cfg" ] && model="$(jq -r '.gardener_model // "claude-sonnet-4-6"' "$cfg")"
 
 # Token usage over the last 24h, summed from the gardener logs by telemetry.sh
 # (one scan, shared with the run-health stats below). claude -p's .usage splits

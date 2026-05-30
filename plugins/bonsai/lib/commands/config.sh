@@ -35,6 +35,14 @@ case "$key" in
     exit 0 ;;
 esac
 
+# A value is required for every set operation (view mode was handled above). An
+# empty value would otherwise sail past the numeric type-check for gardener_model
+# (the `!= gardener_model` short-circuit) and write `.gardener_model = ""`.
+if [ -z "$value" ]; then
+  echo "ERR: $key requires a value."
+  exit 0
+fi
+
 # Type-check the value per key. Every key except gardener_model is a
 # non-negative integer; reject a mismatch instead of writing a value every
 # numeric consumer would silently ignore while we report "OK".
@@ -48,7 +56,10 @@ if ! jq empty "$cfg" 2>/dev/null; then
   exit 0
 fi
 
-tmp=$(mktemp)
+tmp=$(mktemp 2>/dev/null) || { echo "ERR: could not create a temp file."; exit 0; }
+# Remove the temp file on any exit path (mv failure, integrity failure, or a
+# successful mv that already consumed it — rm -f is then a harmless no-op).
+trap 'rm -f "$tmp"' EXIT
 # `|| true`: a jq failure (e.g. config is valid JSON but not an object) must not
 # abort under `set -e` — the integrity check below turns it into a clean error.
 if [ "$key" = "gardener_model" ]; then

@@ -40,7 +40,8 @@ fi
   echo "Trimmed: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "Reason: $reason"
   echo
-} >> "$trimmed_md"
+} >> "$trimmed_md" || true   # non-fatal: still regenerate the index below so the
+                             # branch's new 'trimmed' status and INDEX.md agree
 
 bonsai_index_regenerate "$cwd"
 echo "OK"

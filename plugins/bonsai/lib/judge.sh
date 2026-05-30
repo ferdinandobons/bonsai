@@ -50,7 +50,11 @@ bonsai_judge_parse() {
   # Isolate the JSON object: drop everything before the first '{' and after the
   # last '}' (collapse newlines first so the sed ranges span the whole reply).
   local json
-  json="$(printf '%s' "$raw" | tr '\n' '\036' \
+  # Strip any literal RS (\036) already in the reply BEFORE using it as the
+  # newline-collapse sentinel — otherwise a stray RS in the LLM text would be
+  # turned back into a newline by the final tr and split the JSON wrongly. A
+  # valid JSON reply never contains a raw RS, so this is a no-op on real input.
+  json="$(printf '%s' "$raw" | tr -d '\036' | tr '\n' '\036' \
     | sed -E 's/^[^{]*//; s/[^}]*$//' | tr '\036' '\n')"
   [[ -z "$json" ]] && return 1
   printf '%s' "$json" \

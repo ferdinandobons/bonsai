@@ -90,17 +90,19 @@ bonsai_quota_throttle_ok() {
   if [[ -f "$state" ]]; then
     local iso; iso="$(bonsai_json_get "$state" '.last_run_iso')"
     if [[ -n "$iso" ]]; then
-      # Cross-platform date → epoch (BSD vs GNU)
+      # Cross-platform date → epoch (BSD vs GNU). On a parse failure BOTH forms
+      # fail and last_epoch is left empty (not "0") — distinguish that from a
+      # legitimately-parsed sentinel "1970-01-01T00:00:00Z" (the never-run marker),
+      # which yields a real 0 and must NOT trigger the unparseable warning.
       last_epoch="$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" '+%s' 2>/dev/null \
-                    || date -u -d "$iso" '+%s' 2>/dev/null || echo 0)"
-      # A corrupt/unparseable timestamp falls through to last_epoch=0, which then
-      # proceeds as if this were the first run. That is tolerable — the caller
-      # (stop.sh) invokes bonsai_quota_update_last_run on this same pass, rewriting
-      # a fresh valid last_run_iso, so the state self-heals after one run — but
-      # log it so a *persistently* corrupt state.json (which would otherwise defeat
-      # the throttle every turn) is visible instead of silently spawning gardeners.
-      [[ "$last_epoch" =~ ^[0-9]+$ ]] || last_epoch=0
-      [[ "$last_epoch" -eq 0 ]] && bonsai_log WARN "throttle_ok: unparseable last_run_iso '$iso' — proceeding once (state should self-heal)"
+                    || date -u -d "$iso" '+%s' 2>/dev/null)"
+      if [[ ! "$last_epoch" =~ ^[0-9]+$ ]]; then
+        # Unparseable → proceed once (stop.sh rewrites a fresh last_run_iso on this
+        # same pass, so the state self-heals). Log it so a *persistently* corrupt
+        # state.json is visible instead of silently spawning gardeners every turn.
+        bonsai_log WARN "throttle_ok: unparseable last_run_iso '$iso' — proceeding once (state should self-heal)"
+        last_epoch=0
+      fi
     else
       bonsai_log WARN "throttle_ok: state.json exists but last_run_iso missing/empty — treating as first run"
     fi

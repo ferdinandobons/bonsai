@@ -35,7 +35,11 @@ bonsai_telemetry_gardener_stats() {
       # Lexical timestamp comparison (ISO basic format sorts correctly).
       if [[ -n "$cutoff" && "$ts" < "$cutoff" ]]; then continue; fi
       total=$((total + 1))
-      subtype="$(jq -r '.subtype // "error"' "$log" 2>/dev/null || printf 'error')"
+      # Don't chain `|| printf` onto jq: jq streams, so on a log that mixes the
+      # JSON result with trailing stderr text it emits the value AND exits nonzero,
+      # concatenating the fallback onto a valid subtype. Capture, then default.
+      subtype="$(jq -r '.subtype // "error"' "$log" 2>/dev/null)"
+      [[ -n "$subtype" ]] || subtype="error"
       if [[ "$subtype" == "success" ]]; then
         completed=$((completed + 1))
       else

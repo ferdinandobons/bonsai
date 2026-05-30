@@ -25,6 +25,8 @@ source "$LIB_DIR/migrate.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/signal.sh"
 # shellcheck disable=SC1091
+source "$LIB_DIR/history.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/lock.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/dispatch.sh"
@@ -128,6 +130,12 @@ main() {
   local model="claude-sonnet-4-6"
   local lenses='["technical","strategic","workflow"]'
   local transcript_tail_lines=200
+  # Longitudinal history (CONTEXT-only): enabled by default, window 7 days.
+  # history_enabled is intentionally NOT a config.sh key (config.sh stays
+  # integer-only) — it is toggled by editing config.json, so old configs that
+  # lack it default to true and keep working unchanged.
+  local history_enabled="true"
+  local history_window_days=7
   if [[ -f "$cfg_file" ]]; then
     local m; m="$(bonsai_json_get "$cfg_file" '.gardener_model')"
     [[ -n "$m" ]] && model="$m"
@@ -135,6 +143,13 @@ main() {
     [[ -n "$l" ]] && lenses="$l"
     local t; t="$(jq -r '.transcript_tail_lines // 200' "$cfg_file" 2>/dev/null)"
     [[ "$t" =~ ^[0-9]+$ ]] && transcript_tail_lines="$t"
+    # Read the raw value (NO jq `//`): in jq `false // true` yields true, so a
+    # literal `"history_enabled": false` would be silently flipped back on. An
+    # absent key reads as "null" here, leaving the default-true above intact.
+    local he; he="$(jq -r '.history_enabled' "$cfg_file" 2>/dev/null)"
+    [[ "$he" == "false" ]] && history_enabled="false"
+    local hw; hw="$(jq -r '.history_window_days // 7' "$cfg_file" 2>/dev/null)"
+    [[ "$hw" =~ ^[0-9]+$ ]] && history_window_days="$hw"
   fi
 
   # 7b. Pre-slice the transcript: real sessions can exceed 1MB / the Sonnet
@@ -164,6 +179,14 @@ main() {
     git_diff="$(git -C "$cwd" diff HEAD -- . ':!.claude/bonsai' 2>/dev/null | head -c 60000)"
   fi
 
+  # 7d. Longitudinal per-module git-churn summary (CONTEXT-only, no LLM). One new
+  # read-only field; touches NO gate. Empty for non-git dirs, when disabled, and
+  # on any failure (fail-open, exactly like git_diff is empty for non-git dirs).
+  local project_history=""
+  if [[ "$history_enabled" != "false" ]]; then
+    project_history="$(bonsai_history_summary "$cwd" "$history_window_days" 2>/dev/null || true)"
+  fi
+
   local prompt_input
   prompt_input="$(jq -n \
     --arg cwd "$cwd" \
@@ -177,6 +200,7 @@ main() {
     --argjson lenses "$lenses" \
     --arg trimmed "$trimmed_content" \
     --arg git_diff "$git_diff" \
+    --arg project_history "$project_history" \
     '{
       "project_dir": $cwd,
       "session_id": $sid,
@@ -188,7 +212,8 @@ main() {
       "lenses_enabled": $lenses,
       "recent_dedup_hashes": $hashes,
       "trimmed_anti_patterns": $trimmed,
-      "git_diff": $git_diff
+      "git_diff": $git_diff,
+      "project_history": $project_history
     }')"
 
   # 8. Spawn the gardener in the background. Log goes to plugin-data so the

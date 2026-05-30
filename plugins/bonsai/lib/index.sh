@@ -31,7 +31,14 @@ bonsai_index_regenerate() {
   bonsai_ensure_dir "$dir/branches" || return 1
   local idx="$dir/INDEX.md"
 
-  local -a crit norm low kept trimmed
+  # critical_reminder_ttl_days mirrors the reminder soft-TTL (default 0 = off):
+  # an aged-out open critical is shown in the demoted "needs re-check" bucket too,
+  # so INDEX agrees with the box about what is being de-emphasized. Still listed.
+  # Same shared TTL reader the box uses, so the two can never read it differently.
+  local crit_ttl_days; crit_ttl_days="$(bonsai_branches_critical_ttl_days "$project_dir")"
+  local _now; _now="$(date -u +%s)"
+
+  local -a crit crit_stale norm low kept trimmed
   shopt -s nullglob
   for f in "$dir/branches"/*.md; do
     local sev status
@@ -44,7 +51,18 @@ bonsai_index_regenerate() {
     case "$status" in
       open)
         case "$sev" in
-          critical) crit+=("$f") ;;
+          critical)
+            # Split fresh vs needs-re-check using the SAME shared predicate the
+            # reminder box uses (stale flag OR aged past the soft TTL, incl. an
+            # implausible future stamp), so INDEX and the box can never disagree.
+            # Demoted observations are STILL listed here — never dropped, never
+            # archived.
+            if bonsai_branches_is_demoted_critical "$f" "$crit_ttl_days" "$_now"; then
+              crit_stale+=("$f")
+            else
+              crit+=("$f")
+            fi
+            ;;
           low)      low+=("$f") ;;
           # normal + any unknown/malformed severity: never drop an open
           # observation from the index.
@@ -72,6 +90,7 @@ bonsai_index_regenerate() {
     printf '# Bonsai · index\n\n'
     printf '_Last updated: %s_\n\n' "$(bonsai_now_iso)"
     _bonsai_index_section "🔴 Open critical" "${crit[@]}"
+    _bonsai_index_section "🟠 Open critical · needs re-check" "${crit_stale[@]}"
     _bonsai_index_section "🟡 Open normal"   "${norm[@]}"
     _bonsai_index_section "⚪ Open low"      "${low[@]}"
     _bonsai_index_section "✅ Kept"          "${kept[@]}"

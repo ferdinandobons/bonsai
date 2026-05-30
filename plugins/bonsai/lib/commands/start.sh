@@ -28,7 +28,10 @@ if [ ! -f "$cfg" ]; then
   "auto_archive_kept_after_days": 14,
   "auto_archive_trimmed_after_days": 7,
   "transient_data_ttl_days": 7,
-  "max_observations_per_run": 3
+  "max_observations_per_run": 3,
+  "critical_reminder_ttl_days": 0,
+  "history_enabled": true,
+  "history_window_days": 7
 }
 EOF
 fi

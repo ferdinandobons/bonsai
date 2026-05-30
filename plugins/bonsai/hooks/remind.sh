@@ -22,6 +22,8 @@ source "$LIB_DIR/branches.sh"
 # shellcheck disable=SC1091
 source "$LIB_DIR/reminder.sh"
 # shellcheck disable=SC1091
+source "$LIB_DIR/staleness.sh"
+# shellcheck disable=SC1091
 source "$LIB_DIR/archive.sh"
 
 # Wrap every error so the hook never breaks the session.
@@ -57,6 +59,10 @@ main() {
     local ttl; ttl="$(bonsai_json_get "$(bonsai_config_file "$cwd")" '.transient_data_ttl_days')"
     [[ "$ttl" =~ ^[0-9]+$ ]] || ttl=7
     bonsai_archive_purge_transient "$ttl" >/dev/null 2>&1 || true
+    # Recompute the deterministic stale flag on open criticals so a project that
+    # is always muted/throttled (and rarely spawns the gardener) still gets the
+    # demotion. Writes a flag only on positive evidence; never moves a file.
+    bonsai_staleness_run "$cwd" >/dev/null 2>&1 || true
   fi
 
   # 2. Mute gate — global first, then per-project. A muted project is silent.

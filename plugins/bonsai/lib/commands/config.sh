@@ -28,10 +28,11 @@ if [ ! -f "$cfg" ]; then
 fi
 
 case "$key" in
-  gardener_model|throttle_min_minutes|throttle_idle_minutes|max_observations_per_run|auto_archive_kept_after_days|auto_archive_trimmed_after_days|transient_data_ttl_days)
+  gardener_model|throttle_min_minutes|throttle_idle_minutes|max_observations_per_run|auto_archive_kept_after_days|auto_archive_trimmed_after_days|transient_data_ttl_days|critical_reminder_ttl_days|history_window_days)
     ;;
   *)
-    echo "ERR: unknown config key. Allowed: gardener_model, throttle_min_minutes, throttle_idle_minutes, max_observations_per_run, auto_archive_kept_after_days, auto_archive_trimmed_after_days, transient_data_ttl_days"
+    echo "ERR: unknown config key. Allowed: gardener_model, throttle_min_minutes, throttle_idle_minutes, max_observations_per_run, auto_archive_kept_after_days, auto_archive_trimmed_after_days, transient_data_ttl_days, critical_reminder_ttl_days, history_window_days"
+    echo "(history_enabled — the on/off switch for longitudinal history — is a boolean, not an integer, so it is set by editing config.json directly: \"history_enabled\": false)"
     exit 0 ;;
 esac
 

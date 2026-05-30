@@ -183,6 +183,63 @@ EOF
   jq -r '.git_diff' "$BATS_TEST_TMPDIR/gd-stdin.txt" | grep -q "f.txt"
 }
 
+@test "stop: gardener prompt includes a non-empty project_history when a module churned" {
+  fixture_projects_json "$CLAUDE_PROJECT_DIR"
+  fixture_state_json "1970-01-01T00:00:00Z"
+  ( cd "$CLAUDE_PROJECT_DIR" && git init -q && git config user.email t@t && git config user.name t \
+    && mkdir -p auth \
+    && printf 'a\n' > auth/login.sh && git add -A && git commit -qm c1 \
+    && printf 'b\n' >> auth/login.sh && git add -A && git commit -qm c2 \
+    && printf 'c\n' >> auth/login.sh && git add -A && git commit -qm c3 \
+    && printf 'work\n' >> auth/login.sh )
+  local stub_dir="$BATS_TEST_TMPDIR/stub-bin"; mkdir -p "$stub_dir"
+  cat > "$stub_dir/claude" <<EOF
+#!/usr/bin/env bash
+cat - > "$BATS_TEST_TMPDIR/ph-stdin.txt"
+EOF
+  chmod +x "$stub_dir/claude"; export PATH="$stub_dir:$PATH"
+  local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
+  run_stop_hook_with_input "$input"
+  for i in $(seq 1 50); do [ -s "$BATS_TEST_TMPDIR/ph-stdin.txt" ] && break; sleep 0.1; done
+  # Guard the read: a loaded runner may not flush the detached stub within the
+  # poll budget; assert non-empty first so the failure is "stub never wrote",
+  # not an opaque jq parse error (mirrors the [ -f ] gate at the first dispatch
+  # test above).
+  [ -s "$BATS_TEST_TMPDIR/ph-stdin.txt" ]
+  jq -e 'has("project_history")' "$BATS_TEST_TMPDIR/ph-stdin.txt"
+  jq -r '.project_history' "$BATS_TEST_TMPDIR/ph-stdin.txt" | grep -q 'auth'
+}
+
+@test "stop: history_enabled=false empties project_history but the hook still spawns" {
+  fixture_projects_json "$CLAUDE_PROJECT_DIR"
+  fixture_state_json "1970-01-01T00:00:00Z"
+  jq '.history_enabled = false' "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json" \
+    > "$BATS_TEST_TMPDIR/cfg" && mv "$BATS_TEST_TMPDIR/cfg" "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json"
+  ( cd "$CLAUDE_PROJECT_DIR" && git init -q && git config user.email t@t && git config user.name t \
+    && mkdir -p auth && printf 'a\n' > auth/login.sh && git add -A && git commit -qm c1 \
+    && printf 'b\n' >> auth/login.sh && git add -A && git commit -qm c2 \
+    && printf 'work\n' >> auth/login.sh )
+  local stub_dir="$BATS_TEST_TMPDIR/stub-bin"; mkdir -p "$stub_dir"
+  cat > "$stub_dir/claude" <<EOF
+#!/usr/bin/env bash
+cat - > "$BATS_TEST_TMPDIR/phoff-stdin.txt"
+EOF
+  chmod +x "$stub_dir/claude"; export PATH="$stub_dir:$PATH"
+  local input; input="$(jq -n --arg c "$CLAUDE_PROJECT_DIR" '{cwd:$c, session_id:"s", transcript_path:"/tmp/t"}')"
+  run_stop_hook_with_input "$input"
+  for i in $(seq 1 50); do [ -s "$BATS_TEST_TMPDIR/phoff-stdin.txt" ] && break; sleep 0.1; done
+  # Guard the read: a loaded runner may not flush the detached stub within the
+  # poll budget; assert non-empty first so the failure is "stub never wrote",
+  # not an opaque jq parse error (mirrors the [ -f ] gate at the first dispatch
+  # test above).
+  [ -s "$BATS_TEST_TMPDIR/phoff-stdin.txt" ]
+  jq -e 'has("project_history")' "$BATS_TEST_TMPDIR/phoff-stdin.txt"
+  run jq -r '.project_history' "$BATS_TEST_TMPDIR/phoff-stdin.txt"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ "$(jq -r '.last_run_iso' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json")" != "1970-01-01T00:00:00Z" ]
+}
+
 @test "stop: a diff with multibyte UTF-8 truncated at the byte cap still dispatches" {
   fixture_projects_json "$CLAUDE_PROJECT_DIR"
   fixture_state_json "1970-01-01T00:00:00Z"

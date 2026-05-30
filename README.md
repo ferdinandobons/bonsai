@@ -2,13 +2,11 @@
 
 ![Bonsai: from the active approach to the proactive approach](assets/hero.svg)
 
-**Claude answers when you ask. Bonsai notices when you don't.**
+**Claude answers what you ask. Bonsai catches what you miss.**
 
-When you ask, you mostly catch what you remember to look for.
+Bonsai is a Claude Code plugin that acts as a patient gardener for your code. After each turn of your session it silently observes what just happened and, only when it finds something that truly matters, leaves you a single observation: a latent bug you missed, a risky architectural decision you made without noticing, a workflow friction quietly costing you an hour a day.
 
-Bonsai is a Claude Code plugin that acts as a patient gardener for your code. After each turn of your session it silently observes what just happened and — only when it finds something that truly matters — leaves you a single observation: a latent bug you missed, a risky architectural decision you made without noticing, a workflow friction quietly costing you an hour a day.
-
-It never touches your code. It runs in the background, independent of your session, and stays quiet most of the time. It speaks only when the signal is high. **Silence beats noise** is its hard rule — and the reason it's worth leaving on.
+It never touches your code. It runs in the background, independent of your session, and stays quiet most of the time. It speaks only when the signal is high. **Silence beats noise** is its hard rule, and the reason it's worth leaving on.
 
 ## The proof
 
@@ -100,18 +98,20 @@ That is the entire setup. Bonsai now watches this project silently. The interval
 | `/bonsai:config [key value]` | View current config, or set one key |
 | `/bonsai:help` | Full command reference |
 
+Notable keys (set with `/bonsai:config <key> <value>`, or as flags on `/bonsai:start`): `gardener_model`, `throttle_min_minutes` / `throttle_idle_minutes`, `lenses_enabled`, `history_window_days` (longitudinal churn window, default 7), and `critical_reminder_ttl_days` (stop surfacing an open critical in the reminder box after N days, default `0` = off). Set `history_enabled` to `false` in `config.json` to turn the churn summary off entirely.
+
 ## How it works
 
-After each turn of Claude Code, a `Stop` hook script runs. It clears five gates in order — **whitelist** (is this project watched?), **mute** (silenced by you?), **throttle** (enough time since the last check?), **quota** (under the daily cap, per-project and global?), and a **per-project lock** (no other gardener already running?). If any gate fails, it exits silently with no effect on your session.
+After each turn of Claude Code, a `Stop` hook script runs. It clears five gates in order: **whitelist** (is this project watched?), **mute** (silenced by you?), **throttle** (enough time since the last check?), **quota** (under the daily cap, per-project and global?), and a **per-project lock** (no other gardener already running?). If any gate fails, it exits silently with no effect on your session.
 
 If all gates pass, the hook:
 
 1. Slices the session transcript to the last 200 lines (configurable via `transcript_tail_lines`) so the gardener gets a bounded input regardless of how long the session is.
-2. Spawns `claude -p --agent bonsai:gardener` as a fully detached subprocess (`nohup … & disown`) and returns empty output. The gardener runs independently of the parent session — your turn ends immediately.
+2. Spawns `claude -p --agent bonsai:gardener` as a fully detached subprocess (`nohup … & disown`) and returns empty output. The gardener runs independently of the parent session. Your turn ends immediately.
 
 The gardener then, in its own headless context:
 
-1. Reads the `git diff` and the sliced transcript, plus the files changed since its last run.
+1. Reads the `git diff` and the sliced transcript, the files changed since its last run, plus a deterministic per-module **git-churn summary** so it can notice activity that recurs across sessions (e.g. a module touched in many recent commits).
 2. Picks one of three lenses: **technical** (bug patterns, security risks, performance smells, test gaps), **strategic** (architectural decision points, scope creep, unanswered questions), **workflow** (repeated steps that should be automated, missing slash commands).
 3. Drafts candidate observations against a hard quality bar, then filters them: it drops anything it already surfaced (a rolling hash window) or a theme you previously dismissed (the anti-pattern log).
 4. Runs the survivors past a cheap second model (Haiku) that catches semantic duplicates the hash check misses and calibrates each observation's severity.
@@ -122,20 +122,22 @@ Observations live as readable markdown files inside each project. Commit them to
 
 ### The return reminder
 
-Reading is pull, not push: you read observations when you choose to, with `/bonsai:list`. But to keep a **critical** finding from sitting unseen, Bonsai surfaces a soft reminder when you come back to a watched project — on the next prompt you send or when a new conversation starts. It's a small in-chat box with the top findings:
+Reading is pull, not push: you read observations when you choose to, with `/bonsai:list`. But to keep a **critical** finding from sitting unseen, Bonsai surfaces a soft reminder when you come back to a watched project, on the next prompt you send or when a new conversation starts. It's a small in-chat box with the top findings:
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌿 Bonsai · 2 critical observations awaiting review
-  1. 2026-05-29-005 — Race condition in cache update under …
-  2. 2026-05-29-003 — Unvalidated path in plugin loader
+  1. 2026-05-29-005 · Race condition in cache update under …
+  2. 2026-05-29-003 · Unvalidated path in plugin loader
   → /bonsai:list to read · /bonsai:discuss <id> to dig in
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-Only **critical** observations trigger it (silence still beats noise), it shows once per session, and a muted project stays silent. Reading the finding is always your move — the reminder just points.
+Only **critical** observations trigger it (silence still beats noise), it shows once per session, and a muted project stays silent. Reading the finding is always your move. The reminder just points.
 
-Each gardener run is capped at 25 iterations and runs on the model you configure — Sonnet by default, changeable with `/bonsai:config gardener_model <name>` or `--model` on `/bonsai:start`. It uses your Agent SDK credit (included with Claude Pro/Max/Team/Enterprise plans); token usage per project, per day, is visible via `/bonsai:status`.
+The box keeps itself current: if the file a critical points at has since changed, that critical is automatically **demoted** out of the box (it moves to a *needs re-check* group in `INDEX.md`) but stays in `/bonsai:list`. Nothing is ever auto-deleted: an open critical you have not addressed is demoted, never lost.
+
+Each gardener run is capped at 25 iterations and runs on the model you configure: Sonnet by default, changeable with `/bonsai:config gardener_model <name>` or `--model` on `/bonsai:start`. It uses your Agent SDK credit (included with Claude Pro/Max/Team/Enterprise plans); token usage per project, per day, is visible via `/bonsai:status`.
 
 ## Uninstall
 
@@ -146,13 +148,13 @@ Inside Claude Code:
 /plugin marketplace remove bonsai
 ```
 
-This removes the marketplace clone, cache, and settings entries. Your per-project observation logs (`.claude/bonsai/` inside each project) are preserved — delete them by hand if you want a clean slate.
+This removes the marketplace clone, cache, and settings entries. Your per-project observation logs (`.claude/bonsai/` inside each project) are preserved. Delete them by hand if you want a clean slate.
 
 ## Privacy
 
 Bonsai processes:
 
-- Your Claude Code session transcript — the Stop hook slices it to the last ~200 lines and the gardener reads that slice.
+- Your Claude Code session transcript: the Stop hook slices it to the last ~200 lines and the gardener reads that slice.
 - Files in your project (and the `git diff HEAD`, excluding `.claude/bonsai/`) to gather evidence.
 - Optional read-only `git` commands when a `.git/` directory exists.
 
@@ -180,4 +182,4 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report vulnerabil
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.6.3](https://github.com/ferdinandobons/bonsai/releases/tag/v0.6.3).
+See [CHANGELOG.md](CHANGELOG.md). Latest: [v0.7.0](https://github.com/ferdinandobons/bonsai/releases/tag/v0.7.0).

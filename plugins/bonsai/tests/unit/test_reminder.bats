@@ -61,6 +61,48 @@ reminder_file() { printf '%s/.claude/bonsai/reminder.json' "$CLAUDE_PROJECT_DIR"
   [ -z "$output" ]
 }
 
+# A future-dated `created` (bad clock / fixture) must NOT pin the box: when the
+# soft TTL is enabled it is treated as aged-out and demoted, while a normal
+# recent critical still surfaces. F4 regression.
+mk_branch_dated() {
+  local id="$1" sev="$2" st="$3" created="$4"
+  local dir="$CLAUDE_PROJECT_DIR/.claude/bonsai/branches"
+  mkdir -p "$dir"
+  cat > "$dir/$id-x.md" <<EOF
+---
+id: $id
+created: $created
+lens: technical
+severity: $sev
+status: $st
+title: "T $id"
+evidence_ref: "e"
+dedup_hash: h$id
+---
+body
+EOF
+}
+
+@test "reminder: future-dated critical is demoted when soft TTL is enabled" {
+  printf '{"critical_reminder_ttl_days":7}\n' \
+    > "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json"
+  mk_branch_dated "2099-01-01-001" critical open "2099-01-01T00:00:00Z"
+  mk_branch_dated "2026-05-29-002" critical open "2026-05-29T00:00:00Z"
+  run bonsai_reminder_critical_ids "$CLAUDE_PROJECT_DIR"
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | grep -qxF "2026-05-29-002"
+  ! printf '%s\n' "$output" | grep -qxF "2099-01-01-001"
+}
+
+@test "reminder: future-dated critical still surfaces when soft TTL is disabled" {
+  printf '{"critical_reminder_ttl_days":0}\n' \
+    > "$CLAUDE_PROJECT_DIR/.claude/bonsai/config.json"
+  mk_branch_dated "2099-01-01-001" critical open "2099-01-01T00:00:00Z"
+  run bonsai_reminder_critical_ids "$CLAUDE_PROJECT_DIR"
+  [ "$status" -eq 0 ]
+  printf '%s\n' "$output" | grep -qxF "2099-01-01-001"
+}
+
 # --- bonsai_reminder_message ---
 
 @test "reminder: message is singular for 1" {

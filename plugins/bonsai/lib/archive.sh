@@ -8,6 +8,8 @@ _BONSAI_ARCHIVE_SOURCED=1
 source "${BASH_SOURCE[0]%/*}/common.sh"
 # shellcheck disable=SC1091
 source "${BASH_SOURCE[0]%/*}/branches.sh"
+# shellcheck disable=SC1091
+source "${BASH_SOURCE[0]%/*}/staleness.sh"
 
 # Purge transient plugin-data older than ttl_days: pre-sliced transcripts
 # (sliced/sliced-*.jsonl) and per-run gardener logs (logs/gardener-*.log).
@@ -65,6 +67,10 @@ bonsai_archive_run() {
   local arc="$project_dir/.claude/bonsai/archive"
   bonsai_ensure_dir "$arc" || return 1
   [[ -d "$dir" ]] || return 0
+  # Recompute the deterministic staleness flag on open criticals every pass.
+  # This only WRITES `stale: true` on positive evidence (changed file) — it never
+  # moves or archives a critical (demote-not-archive). Best-effort, fail-open.
+  bonsai_staleness_run "$project_dir" >/dev/null 2>&1 || true
   local now; now="$(date -u +%s)"
   shopt -s nullglob
   for f in "$dir"/*.md; do

@@ -48,6 +48,22 @@ bonsai_file_mtime_epoch() {
   printf '%s' "$m"
 }
 
+# ISO-8601 (canonical %Y-%m-%dT%H:%M:%SZ) -> epoch seconds, cross-platform.
+# BSD `date -j -u -f` first, then GNU `date -u -d`. Fail-0 contract, mirroring
+# bonsai_file_mtime_epoch: empty input or any parse failure prints 0 so a
+# malformed timestamp can never crash a caller. The canonical never-run sentinel
+# "1970-01-01T00:00:00Z" parses to a real 0 — callers that must distinguish that
+# from an unparseable stamp (e.g. quota.sh's throttle WARN) keep their own raw
+# inline parse instead of using this collapsing helper.
+bonsai_iso_to_epoch() {
+  local iso="$1" e
+  [[ -z "$iso" ]] && { printf '0'; return 0; }
+  e="$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" '+%s' 2>/dev/null \
+       || date -u -d "$iso" '+%s' 2>/dev/null)"
+  [[ "$e" =~ ^[0-9]+$ ]] || e=0
+  printf '%s' "$e"
+}
+
 # Ensure a directory exists. Silent on success.
 bonsai_ensure_dir() {
   local dir="$1"

@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-05-30
+
+The "smarter gardener" release: the gardener now learns from what you accept,
+demotes criticals whose cited evidence has moved on, and carries a longitudinal
+sense of which parts of the project keep churning — all while keeping **silence
+beats noise** and **never lose a critical** intact.
+
+### Added
+- **Symmetric learning loop.** The Haiku judge now dedups candidates against
+  **accepted** (`kept`) observations, not just open ones, so a problem you marked
+  done with `/bonsai:done` is no longer re-surfaced as "new".
+- **Deterministic staleness / demote-not-archive.** An open *critical* whose cited
+  evidence file changed after it was filed is flagged `stale` and **demoted** out
+  of the return-reminder box (it moves to a `🟠 Open critical · needs re-check`
+  group in `INDEX.md`) while staying fully visible in `/bonsai:list`. No critical
+  is ever auto-archived or deleted. The flag **re-arms** if the file changes again,
+  and a genuinely re-observed bug can resurface. All deterministic bash, no LLM.
+- **Longitudinal memory (`project_history`).** A bounded, no-LLM per-module
+  git-churn summary (cached on HEAD + window + UTC day) is fed to the gardener as
+  **context only**, so it can notice activity that recurs over time. It adds no
+  emission path and touches no gate.
+- **New config keys.** `critical_reminder_ttl_days` (soft TTL for the reminder
+  box, default `0` = off), `history_window_days` (churn window, default `7`), and
+  `history_enabled` (kill switch, `config.json`-only, default on).
+
+### Changed
+- Centralized the critical-demotion predicate (`bonsai_branches_is_demoted_critical`)
+  so the reminder box and `INDEX.md` can never disagree about which criticals are
+  de-emphasized.
+- Extracted the cross-platform ISO→epoch parse into a shared `bonsai_iso_to_epoch`
+  (`common.sh`), removing a duplicated `date` idiom.
+
+### Fixed
+- The reminder box can no longer be silently emptied by a transiently failing
+  `date`: a non-numeric clock now fails open and keeps criticals in the box.
+- The longitudinal history cache invalidates once per UTC day, so a commit that
+  ages out of the window is dropped instead of being served stale.
+
 ## [0.6.3] — 2026-05-30
 
 Docs + CI maintenance only — no runtime or behavior changes to the plugin.

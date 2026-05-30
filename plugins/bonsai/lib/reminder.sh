@@ -21,14 +21,23 @@ _bonsai_reminder_file() { printf '%s/.claude/bonsai/reminder.json' "$1"; }
 
 # IDs of open observations at the critical threshold, one per line, sorted.
 # Sorted output gives a stable order for tests and a deterministic notified set.
+# Demotion (stale-flag OR aged past the soft TTL, incl. an implausible future
+# stamp) is decided by the single shared predicate bonsai_branches_is_demoted_critical
+# (branches.sh), so the box and INDEX can never disagree about which criticals are
+# de-emphasized.
 bonsai_reminder_critical_ids() {
   local project_dir="$1"
+  local ttl_days; ttl_days="$(bonsai_branches_critical_ttl_days "$project_dir")"
+  local now; now="$(date -u +%s)"
   {
     local f sev id
     while IFS= read -r f; do
       [[ -z "$f" ]] && continue
       sev="$(bonsai_branches_read_field "$f" "severity")"
       [[ "$sev" == "critical" ]] || continue
+      # An aged-out or deterministically-stale critical drops OUT of the box but
+      # stays status==open (remains in /bonsai:list and INDEX). Demote-not-drop.
+      bonsai_branches_is_demoted_critical "$f" "$ttl_days" "$now" && continue
       id="$(bonsai_branches_read_field "$f" "id")"
       [[ -n "$id" ]] && printf '%s\n' "$id"
     done < <(bonsai_branches_list_open "$project_dir")

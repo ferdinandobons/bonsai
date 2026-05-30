@@ -6,6 +6,30 @@ load '../helpers/fixtures'
 setup() { setup_sandbox; source_lib common.sh; }
 teardown() { teardown_sandbox; }
 
+@test "common: bonsai_iso_to_epoch parses a canonical stamp to epoch" {
+  run bonsai_iso_to_epoch '2021-01-01T00:00:00Z'
+  [ "$status" -eq 0 ]
+  [ "$output" = "1609459200" ]
+}
+
+@test "common: bonsai_iso_to_epoch maps the never-run sentinel to a real 0" {
+  run bonsai_iso_to_epoch '1970-01-01T00:00:00Z'
+  [ "$status" -eq 0 ]
+  [ "$output" = "0" ]
+}
+
+@test "common: bonsai_iso_to_epoch fails to 0 on an unparseable stamp" {
+  run bonsai_iso_to_epoch 'not-a-date'
+  [ "$status" -eq 0 ]
+  [ "$output" = "0" ]
+}
+
+@test "common: bonsai_iso_to_epoch returns 0 for empty input" {
+  run bonsai_iso_to_epoch ''
+  [ "$status" -eq 0 ]
+  [ "$output" = "0" ]
+}
+
 @test "common: bonsai_now_iso returns ISO-8601 UTC" {
   run bonsai_now_iso
   [ "$status" -eq 0 ]

@@ -30,6 +30,20 @@ run_config() { bash "$BONSAI_PLUGIN_ROOT/lib/commands/config.sh" "$@"; }
   [ "$(jq -r '.throttle_idle_minutes' "$cfg")" = "30" ]
 }
 
+@test "config: history_window_days is an accepted integer key" {
+  run run_config history_window_days 14
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.history_window_days' "$cfg")" = "14" ]
+}
+
+@test "config: history_window_days rejects a non-integer value, config untouched" {
+  jq '.history_window_days = 7' "$cfg" > "$BATS_TEST_TMPDIR/c" && mv "$BATS_TEST_TMPDIR/c" "$cfg"
+  run run_config history_window_days week
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -qi "integer"
+  [ "$(jq -r '.history_window_days' "$cfg")" = "7" ]
+}
+
 @test "config: unknown key is rejected, exits 0, config untouched" {
   run run_config bogus_key 5
   [ "$status" -eq 0 ]

@@ -106,11 +106,22 @@ bonsai_history_compute() {
   # `{40}` interval) so it works even on the older BSD awk that disables interval
   # expressions by default — current macOS/Linux awks accept both, this is the
   # safest form. A malformed line falls through and is dropped, never fatal.
+  # Capture the (already -n 200 bounded) git walk into a variable FIRST, then
+  # aggregate. Piping the timeout-wrapped git straight into `… | head -25` lets
+  # `head` close the pipe early once the 25-module cap is hit (only with >25
+  # modules); on GNU/Linux that early close races the teardown of the
+  # `timeout`-wrapped git and can drop its output entirely (the walk works
+  # unwrapped on macOS, where there is no `timeout`). Buffering the bounded walk
+  # in `raw` takes git out of the early-closed pipe, and capping with
+  # `awk 'NR<=25'` (which reads all of sort's output instead of closing it early)
+  # removes the SIGPIPE altogether. Fail-open to an empty walk.
   local tcmd; tcmd="$(_bonsai_history_timeout)"
-  local tsv
+  local raw
   # shellcheck disable=SC2086
-  tsv="$($tcmd git -C "$dir" log --since="${window} days ago" --name-only \
-          --pretty=format:'%H%x09%cI' -n 200 -- . "$_BONSAI_HISTORY_EXCLUDE" 2>/dev/null \
+  raw="$($tcmd git -C "$dir" log --since="${window} days ago" --name-only \
+          --pretty=format:'%H%x09%cI' -n 200 -- . "$_BONSAI_HISTORY_EXCLUDE" 2>/dev/null || true)"
+  local tsv
+  tsv="$(printf '%s\n' "$raw" \
         | awk -F'\t' '
             length($1)==40 && $1 ~ /^[0-9a-f]+$/ && NF==2 { commit=$1; cdate=$2; next }
             $0 == "" { next }
@@ -128,7 +139,7 @@ bonsai_history_compute() {
             END { for (s in mods) printf "%s\t%d\t%s\n", s, mods[s], last[s] }
           ' 2>/dev/null \
         | sort -t"$(printf '\t')" -k2,2nr \
-        | head -25 || true)"
+        | awk 'NR<=25' || true)"
 
   # No commits in the window → the previous index (if any) is now stale: it would
   # carry an OLD window_days + OLD modules and the summary would render them

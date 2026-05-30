@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] — 2026-05-30
+
+### Added
+- **Persistent-log rotation** (`common.sh` `bonsai_log_rotate`): `bonsai.log` /
+  `bonsai-errors.log` are trimmed to a recent tail past a size cap during the
+  housekeeping pass, so the append-only audit logs can't grow unbounded.
+- **SessionStart housekeeping** (`remind.sh`): the transient-data purge + log
+  rotation now also run on `SessionStart`, so a project that is always muted or
+  throttled (and thus never spawns the gardener) still reclaims disk.
+
 ### Fixed
 - **dedup.sh**: `bonsai_dedup_add` appended unconditionally, so a retried emit
   duplicated an observation's hash in the rolling window (observed in the wild:
@@ -42,6 +52,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **commands (done/dismiss/discuss)**: an unknown id aborted under `set -e` (the
   `f="$(find_by_id …)"` substitution) instead of printing "not found"; fixed with
   `|| true`.
+- **dispatch.sh / stop.sh**: the configured `gardener_model` was a no-op — the
+  gardener always ran on the model pinned in `agents/gardener.md`. It is now passed
+  to `claude -p` as `--model` via an injection-safe args array, so the config (and
+  `/bonsai:config gardener_model`) actually takes effect.
+- **quota.sh** (throttle): a corrupt/unparseable `last_run_iso` is now logged once
+  and treated as a first run (it self-heals on the same pass) instead of silently
+  defeating the throttle; a *legitimately parsed* `1970-01-01T00:00:00Z` sentinel
+  no longer trips a spurious "unparseable" WARN on every Stop hook after `:start`.
+- **archive.sh**: the `mv` into `archive/` is skipped when the `archived` status
+  stamp fails, so a file is never archived carrying a stale `kept`/`trimmed` status
+  (the next pass retries); `purge_transient` now skips a file whose `stat` returns
+  mtime 0 instead of deleting it as if it were ~20000 days old (matching the guard
+  `bonsai_archive_run` already has).
+- **common.sh**: `bonsai_slugify` strips a trailing dash re-introduced by the
+  40-char truncation (no more `…-.md` filenames); `bonsai_sha256` now returns
+  non-zero instead of an empty digest when neither `shasum` nor `sha256sum` exists,
+  so callers can't silently collapse every project onto a blank lock/dedup key.
+- **judge.sh**: `bonsai_judge_parse` strips any literal RS (`\036`) from the reply
+  before using it as the newline-collapse sentinel, so a stray RS in LLM text can't
+  split the verdict JSON at the wrong place.
+- **telemetry.sh**: the gardener `subtype` is read without chaining `|| printf`
+  onto `jq` — on a log mixing the JSON result with trailing stderr, the old form
+  concatenated the fallback and undercounted the `max-turns` health stat.
+- **mute.sh**: a zero duration (`0m`/`0h`/`0d`) is now rejected instead of writing
+  an already-expired mute that reported `OK` while silencing nothing.
+- **commands/config.sh**: setting a key with no value is rejected (it used to write
+  `gardener_model = ""`); the temp file is removed via an `EXIT` trap on any
+  failure path.
+- **commands/status.sh**: `Model:` shows the default instead of the literal `null`
+  when `gardener_model` is absent/null in config.
+- **commands/dismiss.sh**: the `trimmed.md` append is non-fatal so the index is
+  still regenerated, keeping the branch's new `trimmed` status and `INDEX.md` in
+  agreement even if the append fails.
 
 ### Security
 - **gardener.md**: Step 6 spliced the multi-paragraph, LLM-authored observation
@@ -63,6 +106,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gardener. Suite 189 → 211 tests, all green.
 - **quota.json** cross-project read-modify-write race is now documented as
   tolerated (matching `projects.json`) rather than silently present.
+- **CI**: added a macOS leg to the test matrix; a `.shellcheckrc` now disables the
+  unavoidable `SC1091` (the `lib/commands/*.sh` scripts source siblings via a
+  runtime-only `${CLAUDE_PLUGIN_ROOT}` path that ShellCheck can't resolve), keeping
+  the lint step green across runner ShellCheck versions.
+- **Dead code**: removed the unused `bonsai_silent_exit` and `bonsai_dedup_contains`
+  helpers (and their tests).
+- **docs**: fixed `README` `lib/` drift.
 
 ## [0.6.1] — 2026-05-29
 
@@ -584,7 +634,9 @@ First public release.
   shellcheck + bats + JSON manifest validation, manual E2E checklist for
   release validation, Apache 2.0 license.
 
-[Unreleased]: https://github.com/ferdinandobons/bonsai/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/ferdinandobons/bonsai/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.6.2
+[0.6.1]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.6.1
 [0.1.3]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.3
 [0.1.2]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.1

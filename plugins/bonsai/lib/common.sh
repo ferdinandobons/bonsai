@@ -90,13 +90,6 @@ bonsai_log_rotate() {
   return 0
 }
 
-# Silent exit 0 with optional log message. Used by gatekeeper checks.
-bonsai_silent_exit() {
-  local reason="${1:-no reason}"
-  bonsai_log INFO "silent_exit: $reason"
-  exit 0
-}
-
 # Read JSON value at jq path. Returns empty string on error.
 bonsai_json_get() {
   local file="$1"

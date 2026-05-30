@@ -93,6 +93,14 @@ bonsai_quota_throttle_ok() {
       # Cross-platform date → epoch (BSD vs GNU)
       last_epoch="$(date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$iso" '+%s' 2>/dev/null \
                     || date -u -d "$iso" '+%s' 2>/dev/null || echo 0)"
+      # A corrupt/unparseable timestamp falls through to last_epoch=0, which then
+      # proceeds as if this were the first run. That is tolerable — the caller
+      # (stop.sh) invokes bonsai_quota_update_last_run on this same pass, rewriting
+      # a fresh valid last_run_iso, so the state self-heals after one run — but
+      # log it so a *persistently* corrupt state.json (which would otherwise defeat
+      # the throttle every turn) is visible instead of silently spawning gardeners.
+      [[ "$last_epoch" =~ ^[0-9]+$ ]] || last_epoch=0
+      [[ "$last_epoch" -eq 0 ]] && bonsai_log WARN "throttle_ok: unparseable last_run_iso '$iso' — proceeding once (state should self-heal)"
     else
       bonsai_log WARN "throttle_ok: state.json exists but last_run_iso missing/empty — treating as first run"
     fi

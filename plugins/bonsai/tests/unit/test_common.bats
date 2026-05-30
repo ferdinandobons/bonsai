@@ -53,12 +53,6 @@ two" ]
   [ "$status" -eq 0 ]
 }
 
-@test "common: bonsai_silent_exit emits no stdout/stderr and exits 0" {
-  run bash -c 'source "$BONSAI_PLUGIN_ROOT/lib/common.sh"; bonsai_silent_exit "reason"'
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-}
-
 @test "common: bonsai_json_get returns value from file" {
   echo '{"a":{"b":42}}' > "$CLAUDE_PLUGIN_DATA/x.json"
   run bonsai_json_get "$CLAUDE_PLUGIN_DATA/x.json" '.a.b'

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] — 2026-05-30
+
+Docs + CI maintenance only — no runtime or behavior changes to the plugin.
+
+### Changed
+- **README**: sharpened the intro (a concrete "patient gardener" pitch) and
+  corrected the "How it works" section — the gating chain is **five** gates (the
+  per-project concurrency lock was missing), and the gardener flow now documents
+  the dedup + Haiku judge passes and the closing archive/log-rotation step. Also
+  notes the configurable gardener model and drops a stale chips/push reference.
+- **CI**: bumped `actions/checkout@v4` → `@v5` so the workflow runs on Node.js 24,
+  ahead of GitHub's Node.js 20 runner deprecation (forced 2026-06-16, removed
+  2026-09-16).
+
 ## [0.6.2] — 2026-05-30
 
 ### Added
@@ -634,7 +648,8 @@ First public release.
   shellcheck + bats + JSON manifest validation, manual E2E checklist for
   release validation, Apache 2.0 license.
 
-[Unreleased]: https://github.com/ferdinandobons/bonsai/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/ferdinandobons/bonsai/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.6.3
 [0.6.2]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.6.2
 [0.6.1]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.6.1
 [0.1.3]: https://github.com/ferdinandobons/bonsai/releases/tag/v0.1.3

@@ -199,7 +199,7 @@ main() {
   # (e.g. different projects) don't write to — and truncate — the same log file.
   # telemetry globs gardener-*.log, so the extra suffix is still picked up.
   log_file="$CLAUDE_PLUGIN_DATA/logs/gardener-$(bonsai_now_basic)-$$.log"
-  if ! bonsai_dispatch_gardener "$prompt_input" "$log_file" "$lock_dir"; then
+  if ! bonsai_dispatch_gardener "$prompt_input" "$log_file" "$lock_dir" "$model"; then
     bonsai_log ERROR "stop.sh: bonsai_dispatch_gardener failed (is 'claude' on PATH?)"
     # Nothing was spawned, so release the lock now instead of waiting for the
     # staleness backstop — otherwise the project would be blocked for 15 min.

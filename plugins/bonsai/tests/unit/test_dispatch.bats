@@ -30,6 +30,21 @@ teardown() { teardown_sandbox; }
   grep -q -- "bonsai:gardener" "$STUB_DIR/claude-args.txt"
 }
 
+@test "dispatch: passes --model when a model arg is given" {
+  source "$BONSAI_PLUGIN_ROOT/lib/dispatch.sh"
+  bonsai_dispatch_gardener '{"k":"v"}' "/tmp/log.txt" "" "claude-opus-4-8"
+  wait_for_file "$STUB_DIR/claude-args.txt"
+  grep -q -- "--model" "$STUB_DIR/claude-args.txt"
+  grep -q -- "claude-opus-4-8" "$STUB_DIR/claude-args.txt"
+}
+
+@test "dispatch: omits --model when no model arg is given" {
+  source "$BONSAI_PLUGIN_ROOT/lib/dispatch.sh"
+  bonsai_dispatch_gardener '{"k":"v"}' "/tmp/log.txt"
+  wait_for_file "$STUB_DIR/claude-args.txt"
+  ! grep -q -- "--model" "$STUB_DIR/claude-args.txt"
+}
+
 @test "dispatch: passes the prompt input as stdin to claude" {
   source "$BONSAI_PLUGIN_ROOT/lib/dispatch.sh"
   bonsai_dispatch_gardener '{"project_dir":"/tmp/x","session_id":"abc"}' "/tmp/log.txt"

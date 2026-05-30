@@ -32,6 +32,12 @@ bonsai_archive_purge_transient() {
     fi
   done
   shopt -u nullglob
+
+  # Rotate the persistent logs while we're doing housekeeping. These are never
+  # purged by age (they're the audit trail), so without rotation they grow
+  # unbounded on heavy use. Keep the recent tail of each.
+  bonsai_log_rotate "$data_dir/logs/bonsai.log"
+  bonsai_log_rotate "$data_dir/logs/bonsai-errors.log"
   return 0
 }
 

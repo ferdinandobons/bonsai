@@ -25,15 +25,10 @@ teardown() { teardown_sandbox; }
   [ "$output" = "$a" ]
 }
 
-@test "dedup: contains_hash returns false on empty state" {
-  run bonsai_dedup_contains "$CLAUDE_PROJECT_DIR" "abc123"
-  [ "$status" -eq 1 ]
-}
-
-@test "dedup: add then contains_hash true" {
+@test "dedup: add then hash is present in the rolling array" {
   bonsai_dedup_add "$CLAUDE_PROJECT_DIR" "deadbeef"
-  run bonsai_dedup_contains "$CLAUDE_PROJECT_DIR" "deadbeef"
-  [ "$status" -eq 0 ]
+  run jq -r '.dedup_hashes | contains(["deadbeef"])' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
+  [ "$output" = "true" ]
 }
 
 @test "dedup: rolling array trims to 50" {
@@ -46,12 +41,6 @@ teardown() { teardown_sandbox; }
   [ "$output" = "true" ]
   run jq -r '.dedup_hashes | contains(["hash-01"])' "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
   [ "$output" = "false" ]
-}
-
-@test "dedup: contains_hash false on corrupt state.json" {
-  echo "{not valid" > "$CLAUDE_PROJECT_DIR/.claude/bonsai/state.json"
-  run bonsai_dedup_contains "$CLAUDE_PROJECT_DIR" "abc"
-  [ "$status" -eq 1 ]
 }
 
 @test "dedup: add on corrupt state.json returns 1 and logs error" {

@@ -9,7 +9,8 @@ README of this repo.
 - `commands/` — `/bonsai:*` slash commands
 - `agents/gardener.md` — `bonsai:gardener` subagent
 - `hooks/stop.sh` — Stop hook gatekeeper
-- `lib/` — shell helpers (common, whitelist, mute, quota, dedup, branches, index, chip, push, archive, migrate)
+- `lib/` — shell helpers (common, whitelist, mute, quota, dedup, branches, index, archive, migrate, lock, signal, dispatch, judge, reminder, telemetry)
+- `lib/commands/` — backing scripts for the `/bonsai:*` slash commands
 - `tests/unit/` — bats unit tests for `lib/`
 - `tests/integration/` — bats end-to-end Stop hook test
 - `tests/e2e/CHECKLIST.md` — manual end-to-end checklist

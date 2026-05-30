@@ -1,0 +1,15 @@
+# ShellCheck configuration for the Bonsai repo.
+#
+# The slash-command scripts under plugins/bonsai/lib/commands/ source their
+# sibling libraries through ${CLAUDE_PLUGIN_ROOT}/lib/*.sh — a path Claude Code
+# only sets at runtime. ShellCheck cannot expand that variable statically, so
+# with -x it emits SC1091 ("Not following: ...") for each such source and then
+# exits non-zero on those info-level findings, which fails CI on current runner
+# shellcheck versions (apt 0.10.0 / brew 0.10.0).
+#
+# SC1091 never indicates a bug — it only means a sourced file could not be read
+# at lint time. Resolvable sources (lib/*.sh and hooks/*.sh, which use
+# ${BASH_SOURCE[0]%/*} / $LIB_DIR) are still followed by -x for cross-file
+# analysis; disabling SC1091 only suppresses the unavoidable noise, it does not
+# stop ShellCheck from following the sources it CAN resolve.
+disable=SC1091

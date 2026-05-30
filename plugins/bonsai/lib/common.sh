@@ -64,11 +64,30 @@ bonsai_log() {
   return 0
 }
 
-# Silent exit 0 with optional log message. Used by gatekeeper checks.
-bonsai_silent_exit() {
-  local reason="${1:-no reason}"
-  bonsai_log INFO "silent_exit: $reason"
-  exit 0
+# Rotate a persistent log file in place when it grows past a byte cap, keeping
+# only the most recent lines. bonsai.log / bonsai-errors.log are append-only and
+# otherwise grow without bound on heavy use; this is called opportunistically
+# from the housekeeping path (archive/purge) rather than on every log write, so
+# the hot bonsai_log path stays a pure append. Best-effort and silent.
+#   $1 - file        $2 - max_bytes (default 524288 = 512 KiB)
+#   $3 - keep_lines (default 2000)
+bonsai_log_rotate() {
+  local file="$1"
+  local max_bytes="${2:-524288}"
+  local keep_lines="${3:-2000}"
+  [[ -f "$file" ]] || return 0
+  local size
+  size="$(wc -c < "$file" 2>/dev/null | tr -d '[:space:]')"
+  [[ "$size" =~ ^[0-9]+$ ]] || return 0
+  (( size <= max_bytes )) && return 0
+  local tmp
+  tmp="$(mktemp "${file}.rot.XXXXXX" 2>/dev/null)" || return 0
+  if tail -n "$keep_lines" "$file" > "$tmp" 2>/dev/null; then
+    mv "$tmp" "$file" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+  else
+    rm -f "$tmp" 2>/dev/null
+  fi
+  return 0
 }
 
 # Read JSON value at jq path. Returns empty string on error.

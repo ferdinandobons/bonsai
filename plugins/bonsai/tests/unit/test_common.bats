@@ -25,10 +25,32 @@ teardown() { teardown_sandbox; }
   grep -q "boom" "$CLAUDE_PLUGIN_DATA/logs/bonsai-errors.log"
 }
 
-@test "common: bonsai_silent_exit emits no stdout/stderr and exits 0" {
-  run bash -c 'source "$BONSAI_PLUGIN_ROOT/lib/common.sh"; bonsai_silent_exit "reason"'
+@test "common: bonsai_log_rotate truncates an oversized log to its tail" {
+  local f="$CLAUDE_PLUGIN_DATA/logs/big.log"
+  mkdir -p "$CLAUDE_PLUGIN_DATA/logs"
+  seq 1 5000 > "$f"
+  bonsai_log_rotate "$f" 1024 100
+  [ -f "$f" ]
+  local lines; lines="$(wc -l < "$f" | tr -d '[:space:]')"
+  [ "$lines" -eq 100 ]
+  # The tail is kept: the very last original line survives, the first does not.
+  grep -q "^5000$" "$f"
+  ! grep -q "^1$" "$f"
+}
+
+@test "common: bonsai_log_rotate leaves a small log untouched" {
+  local f="$CLAUDE_PLUGIN_DATA/logs/small.log"
+  mkdir -p "$CLAUDE_PLUGIN_DATA/logs"
+  printf 'one\ntwo\n' > "$f"
+  bonsai_log_rotate "$f" 524288 2000
+  run cat "$f"
+  [ "$output" = "one
+two" ]
+}
+
+@test "common: bonsai_log_rotate on a missing file is a no-op success" {
+  run bonsai_log_rotate "$CLAUDE_PLUGIN_DATA/logs/nope.log"
   [ "$status" -eq 0 ]
-  [ -z "$output" ]
 }
 
 @test "common: bonsai_json_get returns value from file" {
